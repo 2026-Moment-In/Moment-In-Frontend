@@ -1,5 +1,6 @@
 import LandingPage from "./pages/LandingPage";
 import EditorPage from "./pages/EditorPage";
+<<<<<<< HEAD
 import QR from "./pages/QR";
 import ShowQR from "./pages/showQR";
 import { Routes, Route } from 'react-router-dom';
@@ -15,6 +16,11 @@ function App() {
       <Route path="/qrview/:code" element={<QRview />} />
     </Routes>
   );
+=======
+
+function App() {
+  return <EditorPage />;
+>>>>>>> origin/main
 }
 
 export default App;
