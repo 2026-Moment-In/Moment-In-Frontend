@@ -175,44 +175,91 @@ function DatePanel({ data, onChange }: { data: InvitationData; onChange: (d: Par
   );
 }
 
-function LocationPanel({ data, onChange }: { data: InvitationData; onChange: (d: Partial<InvitationData>) => void }) {
+function LocationPanel({
+  data,
+  onChange,
+}: {
+  data: InvitationData;
+  onChange: (d: Partial<InvitationData>) => void;
+}) {
+
+  function openPostcode() {
+    new window.daum.Postcode({
+      oncomplete: function (result: any) {
+        onChange({
+          venueAddress: result.address,
+        });
+      },
+    }).open();
+  }
+
   return (
     <div className="panel">
-      <SectionTitle icon="📍" title="오시는 길" />
+      <SectionTitle
+        icon="📍"
+        title="오시는 길"
+      />
+
+      {/* 블록 제목 */}
       <FG label="블록 제목">
-        <input className="f-input" defaultValue="오시는 길" />
-      </FG>
-      <p className="sub-label">예식 기본정보</p>
-      <FRow>
-        <FG label="예식 장소">
-          <input className="f-input" value={data.venueName} onChange={e => onChange({ venueName: e.target.value })} />
-        </FG>
-        <FG label="세부 장소">
-          <input className="f-input" value={data.venueDetail} onChange={e => onChange({ venueDetail: e.target.value })} />
-        </FG>
-      </FRow>
-      <FG label="식장 주소">
-        <div className="addr-row">
-          <input className="f-input" value={data.venueAddress} onChange={e => onChange({ venueAddress: e.target.value })} />
-          <button className="addr-btn">우편번호 검색</button>
-        </div>
+        <input
+          className="f-input"
+          defaultValue="오시는 길"
+        />
       </FG>
 
-      <p className="sub-label">교통수단 안내</p>
-      <p className="sub-label-2">교통수단 선택</p>
-      <div className="transport-tabs">
-        {TRANSPORTS.map(t => (
+      {/* 기본 정보 */}
+      <p className="sub-label">
+        예식 기본정보
+      </p>
+
+      <FRow>
+        <FG label="예식 장소">
+          <input
+            className="f-input"
+            value={data.venueName}
+            onChange={(e) =>
+              onChange({
+                venueName: e.target.value,
+              })
+            }
+          />
+        </FG>
+
+        <FG label="세부 장소">
+          <input
+            className="f-input"
+            value={data.venueDetail}
+            onChange={(e) =>
+              onChange({
+                venueDetail: e.target.value,
+              })
+            }
+          />
+        </FG>
+      </FRow>
+
+      {/* 주소 */}
+      <FG label="식장 주소">
+        <div className="addr-row">
+          <input
+            className="f-input"
+            value={data.venueAddress}
+            onChange={(e) =>
+              onChange({
+                venueAddress: e.target.value,
+              })
+            }
+          />
+
           <button
-            key={t}
-            className={`t-tab ${data.transport === t ? "active" : ""}`}
-            onClick={() => onChange({ transport: t })}
+            type="button"
+            className="addr-btn"
+            onClick={openPostcode}
           >
-            {t}
+            우편번호 검색
           </button>
-        ))}
-      </div>
-      <FG label="오시는 길 안내">
-        <textarea className="f-textarea" rows={3} value={data.transportGuide} onChange={e => onChange({ transportGuide: e.target.value })} />
+        </div>
       </FG>
     </div>
   );
