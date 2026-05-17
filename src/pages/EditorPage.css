@@ -75,11 +75,7 @@ input, textarea { font: inherit; color: inherit; }
   display: flex;
   flex: 1;
   overflow: hidden;
-<<<<<<< HEAD
 }
-=======
-} 
->>>>>>> origin/main
 
 .editor-sidebar {
   width: var(--sidebar-w);
