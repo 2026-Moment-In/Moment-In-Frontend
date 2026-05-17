@@ -1,5 +1,8 @@
 import { useState } from "react";
 import "./EditorPage.css";
+import { useNavigate } from "react-router-dom";
+
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,17 +32,17 @@ interface InvitationData {
 }
 
 const MENU_ITEMS: { key: MenuKey; icon: string; label: string }[] = [
-  { key: "mood",     icon: "🎨", label: "무드 선택" },
-  { key: "greeting", icon: "✉️",  label: "인사말" },
-  { key: "basic",    icon: "🤍", label: "기본 정보" },
-  { key: "date",     icon: "📅", label: "예식 일시" },
+  { key: "mood", icon: "🎨", label: "무드 선택" },
+  { key: "greeting", icon: "✉️", label: "인사말" },
+  { key: "basic", icon: "🤍", label: "기본 정보" },
+  { key: "date", icon: "📅", label: "예식 일시" },
   { key: "location", icon: "📍", label: "오시는 길" },
-  { key: "gallery",  icon: "🖼️", label: "갤러리" },
-  { key: "nearby",   icon: "✨", label: "주변 즐길 거리" },
+  { key: "gallery", icon: "🖼️", label: "갤러리" },
+  { key: "nearby", icon: "✨", label: "주변 즐길 거리" },
 ];
 
 const MOODS: { key: Mood; label: string; accent: string; bg: string }[] = [
-  { key: "Natural",  label: "Natural",  accent: "#6b7c5e", bg: "#f5f2ed" },
+  { key: "Natural", label: "Natural", accent: "#6b7c5e", bg: "#f5f2ed" },
   { key: "Romantic", label: "Romantic", accent: "#b8748a", bg: "#fdf0f3" }
 ];
 
@@ -175,91 +178,52 @@ function DatePanel({ data, onChange }: { data: InvitationData; onChange: (d: Par
   );
 }
 
-function LocationPanel({
-  data,
-  onChange,
-}: {
-  data: InvitationData;
-  onChange: (d: Partial<InvitationData>) => void;
-}) {
-
+function LocationPanel({ data, onChange }: { data: InvitationData; onChange: (d: Partial<InvitationData>) => void }) {
   function openPostcode() {
     new window.daum.Postcode({
       oncomplete: function (result: any) {
-        onChange({
-          venueAddress: result.address,
-        });
+        onChange({ venueAddress: result.address });
       },
     }).open();
   }
 
   return (
     <div className="panel">
-      <SectionTitle
-        icon="📍"
-        title="오시는 길"
-      />
-
-      {/* 블록 제목 */}
+      <SectionTitle icon="📍" title="오시는 길" />
       <FG label="블록 제목">
-        <input
-          className="f-input"
-          defaultValue="오시는 길"
-        />
+        <input className="f-input" defaultValue="오시는 길" />
       </FG>
-
-      {/* 기본 정보 */}
-      <p className="sub-label">
-        예식 기본정보
-      </p>
-
+      <p className="sub-label">예식 기본정보</p>
       <FRow>
         <FG label="예식 장소">
-          <input
-            className="f-input"
-            value={data.venueName}
-            onChange={(e) =>
-              onChange({
-                venueName: e.target.value,
-              })
-            }
-          />
+          <input className="f-input" value={data.venueName} onChange={e => onChange({ venueName: e.target.value })} />
         </FG>
-
         <FG label="세부 장소">
-          <input
-            className="f-input"
-            value={data.venueDetail}
-            onChange={(e) =>
-              onChange({
-                venueDetail: e.target.value,
-              })
-            }
-          />
+          <input className="f-input" value={data.venueDetail} onChange={e => onChange({ venueDetail: e.target.value })} />
         </FG>
       </FRow>
-
-      {/* 주소 */}
       <FG label="식장 주소">
         <div className="addr-row">
-          <input
-            className="f-input"
-            value={data.venueAddress}
-            onChange={(e) =>
-              onChange({
-                venueAddress: e.target.value,
-              })
-            }
-          />
-
-          <button
-            type="button"
-            className="addr-btn"
-            onClick={openPostcode}
-          >
-            우편번호 검색
-          </button>
+          <input className="f-input" value={data.venueAddress} onChange={e => onChange({ venueAddress: e.target.value })} />
+          <button className="addr-btn" onClick={openPostcode} type="button">우편번호 검색</button>
         </div>
+      </FG>
+
+      <p className="sub-label">교통수단 안내</p>
+      <p className="sub-label-2">교통수단 선택</p>
+      <div className="transport-tabs">
+        {TRANSPORTS.map(t => (
+          <button
+            key={t}
+            className={`t-tab ${data.transport === t ? "active" : ""}`}
+            onClick={() => onChange({ transport: t })}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <FG label="오시는 길 안내">
+        <textarea className="f-textarea" rows={3} value={data.transportGuide} onChange={e => onChange({ transportGuide: e.target.value })} />
       </FG>
     </div>
   );
@@ -322,7 +286,7 @@ function MobilePreview({ data }: { data: InvitationData }) {
   const mo = d.getMonth() + 1;
   const dy = d.getDate();
   const yr = d.getFullYear();
-  const wd = ["SUN","MON","TUE","WED","THU","FRI","SAT"][d.getDay()];
+  const wd = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][d.getDay()];
 
   return (
     <div className="mobile-preview" style={{ "--pa": mood.accent, "--pb": mood.bg } as React.CSSProperties}>
@@ -333,7 +297,7 @@ function MobilePreview({ data }: { data: InvitationData }) {
           <span className="p-amp">&amp;</span>
           <span>{data.brideName}</span>
         </div>
-        <p className="p-herodate">{yr}.{String(mo).padStart(2,"0")}.{String(dy).padStart(2,"0")} {wd}</p>
+        <p className="p-herodate">{yr}.{String(mo).padStart(2, "0")}.{String(dy).padStart(2, "0")} {wd}</p>
       </div>
 
       <div className="p-dots"><span /><span /><span /></div>
@@ -345,9 +309,9 @@ function MobilePreview({ data }: { data: InvitationData }) {
 
       <div className="p-sec p-dateblock">
         <div className="p-bigdate">
-          <span>{String(mo).padStart(2,"0")}</span>
+          <span>{String(mo).padStart(2, "0")}</span>
           <span className="p-sl">/</span>
-          <span>{String(dy).padStart(2,"0")}</span>
+          <span>{String(dy).padStart(2, "0")}</span>
         </div>
         <p className="p-time">{data.weddingTime} · {wd}</p>
       </div>
@@ -367,16 +331,31 @@ export default function EditorPage() {
   const [activeMenu, setActiveMenu] = useState<MenuKey>("basic");
   const [data, setData] = useState<InvitationData>(DEFAULT_DATA);
   const onChange = (p: Partial<InvitationData>) => setData(prev => ({ ...prev, ...p }));
+  const navigate = useNavigate();
+
+  async function handleStart() {
+    const res = await fetch("http://localhost:3000/qr", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data), // InvitationData 전체
+    });
+
+    const result = await res.json();
+
+    navigate(`/qr/${result.code}`);
+  }
 
   const panel = () => {
     switch (activeMenu) {
-      case "mood":     return <MoodPanel data={data} onChange={onChange} />;
+      case "mood": return <MoodPanel data={data} onChange={onChange} />;
       case "greeting": return <GreetingPanel data={data} onChange={onChange} />;
-      case "basic":    return <BasicPanel data={data} onChange={onChange} />;
-      case "date":     return <DatePanel data={data} onChange={onChange} />;
+      case "basic": return <BasicPanel data={data} onChange={onChange} />;
+      case "date": return <DatePanel data={data} onChange={onChange} />;
       case "location": return <LocationPanel data={data} onChange={onChange} />;
-      case "gallery":  return <GalleryPanel />;
-      case "nearby":   return <NearbyPanel data={data} onChange={onChange} />;
+      case "gallery": return <GalleryPanel />;
+      case "nearby": return <NearbyPanel data={data} onChange={onChange} />;
     }
   };
 
@@ -384,7 +363,7 @@ export default function EditorPage() {
     <div className="editor-root">
       <header className="editor-nav">
         <span className="editor-logo">MomentIn</span>
-        <button className="editor-done-btn">완성하기</button>
+        <button className="editor-done-btn" onClick={handleStart}>완성하기</button>
       </header>
       <div className="editor-body">
         <aside className="editor-sidebar">
@@ -411,3 +390,52 @@ export default function EditorPage() {
     </div>
   );
 }
+
+
+
+
+// import "./EditorPage.css";
+// import { useState } from "react";
+// import { useNavigate } from "react-router-dom";
+
+
+// export default function EditorPage() {
+//     const navigate = useNavigate();
+//     const [text, setText] = useState("");
+//     const [qr, setQr] = useState("http://localhost:3000");
+
+//     async function handleStart() {
+//         const res = await fetch(`${qr}/qr`,{
+//             method: "POST",
+//             headers:{
+//                 "Content-Type": "application/json",
+//             },
+//             body : JSON.stringify({text}),
+//         })  //응답
+
+//         const data = await res.json();
+//         navigate(`/qr/${data.code}`); //응답에서 받은 코드로 이동
+//     }
+
+//     return (
+//         <main className="landing">
+//             <div className="overlay" />
+
+//             <section className="landing-content">
+//                 <img src="/images/logo.png" alt="logo" className="logo" />
+
+//                 <h1>MomentIn</h1>
+
+//                 <input
+//                     type="text"
+//                     placeholder="글자 입력"
+//                     onChange={(e) => setText(e.target.value)}
+//                 />
+
+//                 <button onClick={handleStart}>
+//                     완성하기
+//                 </button>
+//             </section>
+//         </main>
+//     );
+// }

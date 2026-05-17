@@ -2,7 +2,7 @@ import "./LandingPage.css";
 
 export default function LandingPage() {
   function handleStart() {
-    window.location.href = "http://localhost:3000/auth/kakao";
+    window.location.href = "http://localhost:3000/auth/kakao?prompt=login"; //로그인 할 때마다 로그인 창 다시 보여주기
   }
 
   return (
