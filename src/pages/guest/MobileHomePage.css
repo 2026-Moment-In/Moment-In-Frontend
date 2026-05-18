@@ -1,0 +1,133 @@
+.mobile-home-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  
+  background-image: url("/images/background_guest.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+.home-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.home-header .slogan {
+  font-size: 14px;
+  color: #554335;
+  font-family: "DM Serif Display", serif;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+  font-weight: 300;
+}
+
+.home-header .logo {
+  width: 156px;
+  height: auto;
+  display: block;
+  margin: 0 auto 8px;
+}
+
+.home-header .brand-name {
+  font-family: "DM Serif Display", serif;
+  font-size: 28px;
+  color: #3D2411;
+  margin: 0;
+  font-weight: bold;
+}
+
+.entry-card {
+  box-sizing: border-box;
+  width: 350px;
+  height: 420px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 28px;
+  padding: 65px 24px 15px 24px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-icon-container {
+  width: 64px;
+  height: 64px;
+  background-color: #EFECE8;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.card-title {
+  font-size: 18px;
+  font-family: "Pretendard", sans-serif;
+  color: #3D2411;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+}
+
+.card-subtitle {
+  font-size: 12px;
+  font-family: "Pretendard", sans-serif;
+  color: #7A6B5E;
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+}
+
+.entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.code-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  background-color: #ECEAE6;
+  border: none;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 15px;
+  color: #3D2411;
+  text-align: center;
+  outline: none;
+}
+
+.code-input::placeholder {
+  color: #A3978E;
+}
+
+.submit-button {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  background-color: #2B1608;
+  border: none;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-family: "Pretendard", sans-serif;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.submit-button:active {
+  background-color: #1A0D05;
+}
