@@ -1,11 +1,11 @@
-import type { Guestbook, Photo, Wedding } from './types';
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? `${API_URL}/live`;
-export const DEMO_USER_ID =
-  import.meta.env.VITE_DEMO_USER_ID ?? '00000000-0000-0000-0000-000000000001';
+const BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+<<<<<<< HEAD
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...init,
+=======
   const token = localStorage.getItem('momentin_access_token');
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -14,17 +14,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
+>>>>>>> bc5569aacd5d294a207982e708aace1129f92cb3
   });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(message || response.statusText);
-  }
-
-  return response.json() as Promise<T>;
+  if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
+  return res.json() as Promise<T>;
 }
 
 export const api = {
+<<<<<<< HEAD
+  get: <T>(path: string) => request<T>(path),
+  post: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "POST", body: JSON.stringify(body) }),
+  patch: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+=======
   devLogin() {
     return request<{ access_token: string; user: { id: string; display_name: string } }>('/auth/dev');
   },
@@ -122,4 +126,34 @@ export const api = {
   getRanking(weddingId: string) {
     return request<Photo[]>(`/events/ranking/${weddingId}/top`);
   },
+>>>>>>> bc5569aacd5d294a207982e708aace1129f92cb3
 };
+
+let ws: WebSocket | null = null;
+
+export function connectSocket(
+  inviteCode: string,
+  onMessage: (data: unknown) => void
+): () => void {
+  const wsUrl = import.meta.env.VITE_WS_URL ?? `ws://${location.host}`;
+  ws = new WebSocket(`${wsUrl}/ws/${inviteCode}`);
+
+  ws.onmessage = (e) => {
+    try {
+      onMessage(JSON.parse(e.data as string));
+    } catch {
+      onMessage(e.data);
+    }
+  };
+
+  return () => {
+    ws?.close();
+    ws = null;
+  };
+}
+
+export function sendSocketMessage(payload: unknown): void {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(payload));
+  }
+}
