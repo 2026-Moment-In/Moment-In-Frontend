@@ -112,3 +112,27 @@ export const COLOR_PRESETS: Record<ColorPreset, Omit<ColorTheme, "preset">> = {
   ocean:   { bg: "#eff5f8", text: "#1a2f3a", accent: "#6a9eb5", button: "#2a5f7a", buttonText: "#ffffff" },
   forest:  { bg: "#ede8e0", text: "#2a2218", accent: "#7a6a4a", button: "#4a3a28", buttonText: "#ffffff" },
 };
+
+
+// 임시!!!!!
+export interface Photo {
+  id: string;
+  image_url: string;
+  like_count: number;
+  user?: { display_name: string };
+  [key: string]: unknown;
+}
+export interface Guestbook {
+  id: string;
+  message: string;
+  user?: { display_name: string };
+  [key: string]: unknown;
+}
+export interface Wedding {
+  id: string;
+  wedding_date?: string;
+  wedding_time?: string;
+  location_name?: string;
+  location_address?: string;
+  [key: string]: unknown;
+}
