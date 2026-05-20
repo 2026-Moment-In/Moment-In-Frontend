@@ -1,0 +1,311 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Noto+Serif+KR:wght@300;400;500&display=swap');
+
+/* ── 전체 레이아웃 ── */
+.qr-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.qr-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(60%) brightness(0.6);
+}
+
+.qr-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(20, 12, 6, 0.3) 0%,
+    rgba(20, 12, 6, 0.5) 100%
+  );
+}
+
+/* ── 헤더 ── */
+.qr-header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 16px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.qr-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 500;
+  color: #2c1a0e;
+  letter-spacing: 0.05em;
+}
+
+/* ── 메인 ── */
+.qr-main {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  padding: 40px 20px;
+}
+
+/* ── 카드 ── */
+.qr-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.18),
+    0 1px 4px rgba(0, 0, 0, 0.08);
+  animation: cardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── QR 이미지 ── */
+.qr-img-wrap {
+  padding: 8px;
+  background: #fff;
+  border: 0.5px solid #e8e0d8;
+  border-radius: 8px;
+}
+
+.qr-img {
+  display: block;
+  width: 200px;
+  height: 200px;
+}
+
+/* ── 코드 행 ── */
+.qr-code-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  color: #7a6a5a;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 20px;
+  transition: background 0.18s;
+  letter-spacing: 0.08em;
+  position: relative;
+}
+
+.qr-code-row:hover {
+  background: #f5f0eb;
+}
+
+.qr-copied {
+  position: absolute;
+  right: -56px;
+  font-size: 11px;
+  color: #8a6a4a;
+  background: #f5ede3;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ── 안내 텍스트 ── */
+.qr-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 17px;
+  font-weight: 500;
+  color: #2c1a0e;
+  text-align: center;
+  letter-spacing: -0.01em;
+  margin-top: 4px;
+}
+
+.qr-sub {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 13px;
+  color: #8a7a6a;
+  text-align: center;
+  line-height: 1.7;
+  letter-spacing: -0.01em;
+}
+
+/* ── 버튼 ── */
+.qr-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 16px;
+  background: #3b2010;
+  color: #f5ede3;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 15px;
+  font-weight: 400;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.qr-btn:hover {
+  background: #5a3018;
+  transform: translateY(-1px);
+}
+
+.qr-btn:active {
+  transform: translateY(0);
+}
+
+/* ── 오버레이 ── */
+.qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(20, 10, 4, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  animation: overlayIn 0.3s ease both;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.qr-overlay-card {
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 16px;
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  max-width: 680px;
+  width: calc(100% - 48px);
+  position: relative;
+  animation: overlayCardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+}
+
+@keyframes overlayCardIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.qr-overlay-left {
+  flex: 1;
+}
+
+.qr-overlay-guide {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 14px;
+  color: #4a3020;
+  line-height: 1.9;
+  letter-spacing: -0.01em;
+}
+
+.heart {
+  color: #c0392b;
+}
+
+.qr-overlay-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.qr-overlay-label {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 12px;
+  color: #9a8a7a;
+  letter-spacing: 0.04em;
+}
+
+.qr-overlay-code {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px;
+  font-weight: 500;
+  color: #2c1a0e;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.qr-overlay-right {
+  flex-shrink: 0;
+}
+
+.qr-overlay-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 6px;
+  border: 0.5px solid #e0d8d0;
+}
+
+.qr-overlay-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9a8a7a;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.15s;
+}
+
+.qr-overlay-close:hover {
+  color: #3b2010;
+}
+
+/* ── We're getting married ── */
+.qr-overlay-script {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  font-style: italic;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* ── 반응형 ── */
+@media (max-width: 500px) {
+  .qr-overlay-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px 20px;
+    gap: 16px;
+  }
+
+  .qr-overlay-code {
+    font-size: 38px;
+  }
+
+  .qr-overlay-script {
+    font-size: 24px;
+  }
+
+  .qr-card {
+    padding: 32px 24px;
+  }
+}

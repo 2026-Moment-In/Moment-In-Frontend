@@ -4,13 +4,20 @@ export type Wedding = {
   id: string;
   admin_id?: string;
   theme_code?: string;
+  invitation_json?: string;
+  invitation?: Record<string, unknown> | null;
   wedding_date?: string;
+  wedding_time?: string;
   location_name?: string;
   location_address?: string;
   status?: string;
   created_at?: string;
   admin?: {
     display_name?: string;
+  };
+  _count?: {
+    photos?: number;
+    guestbooks?: number;
   };
 };
 
