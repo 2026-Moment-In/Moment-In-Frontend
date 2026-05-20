@@ -115,24 +115,36 @@ export const COLOR_PRESETS: Record<ColorPreset, Omit<ColorTheme, "preset">> = {
 
 
 // 임시!!!!!
+// 임시!!!!!  ← 이 부분을 아래로 교체
+
 export interface Photo {
   id: string;
   image_url: string;
   like_count: number;
+  is_hidden?: boolean;
+  created_at?: string;
   user?: { display_name: string };
-  [key: string]: unknown;
 }
+
 export interface Guestbook {
   id: string;
   message: string;
+  is_hidden?: boolean;
+  created_at?: string;
   user?: { display_name: string };
-  [key: string]: unknown;
 }
+
 export interface Wedding {
   id: string;
   wedding_date?: string;
   wedding_time?: string;
   location_name?: string;
   location_address?: string;
-  [key: string]: unknown;
+  theme_code?: string;
+  invitation?: Record<string, unknown>;  // unknown → Record<string, unknown>
+  invitation_json?: string;
+  _count?: {
+    photos: number;
+    guestbooks: number;
+  };
 }
