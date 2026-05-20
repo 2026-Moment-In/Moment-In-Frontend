@@ -18,28 +18,28 @@ export const demoPhotos: Photo[] = [
     image_url:
       'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=900&q=80',
     like_count: 9,
-    user: { display_name: '신재은' },
+    user: { display_name: '현재원' },
   },
   {
     id: 'demo-2',
     image_url:
       'https://images.unsplash.com/photo-1523438885200-e635ba2c371e?auto=format&fit=crop&w=900&q=80',
     like_count: 6,
-    user: { display_name: '전채린' },
+    user: { display_name: '최유리' },
   },
   {
     id: 'demo-3',
     image_url:
       'https://images.unsplash.com/photo-1525258946800-98cfd641d0de?auto=format&fit=crop&w=900&q=80',
     like_count: 4,
-    user: { display_name: '박지우' },
+    user: { display_name: '박지훈' },
   },
   {
     id: 'demo-4',
     image_url:
       'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=900&q=80',
     like_count: 3,
-    user: { display_name: '이현서' },
+    user: { display_name: '이현수' },
   },
 ];
 
@@ -52,6 +52,6 @@ export const demoGuestbooks: Guestbook[] = [
   {
     id: 'guest-2',
     message: '결혼 진심으로 축하합니다!',
-    user: { display_name: '지훈' },
+    user: { display_name: '지우' },
   },
 ];
