@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./EditorPage.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { api } from "../api";
 
-
+declare global {
+  interface Window {
+    daum: any;
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -280,6 +285,7 @@ function NearbyPanel({ data, onChange }: { data: InvitationData; onChange: (d: P
     </div>
   );
 }
+
 function MobilePreview({ data }: { data: InvitationData }) {
   const mood = MOODS.find(m => m.key === data.mood)!;
   const d = new Date(data.weddingDate);
@@ -332,19 +338,25 @@ export default function EditorPage() {
   const [data, setData] = useState<InvitationData>(DEFAULT_DATA);
   const onChange = (p: Partial<InvitationData>) => setData(prev => ({ ...prev, ...p }));
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const weddingId = searchParams.get("weddingId");
+
+  useEffect(() => {
+    if (!weddingId) return;
+    api.getMyWedding(weddingId).then((wedding) => {
+      const invitation = wedding.invitation ?? {};
+      setData((prev) => ({ ...prev, ...invitation }));
+    });
+  }, [weddingId]);
 
   async function handleStart() {
-    const res = await fetch("http://localhost:3000/qr", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data), // InvitationData 전체
-    });
-
-    const result = await res.json();
-
-    navigate(`/qr/${result.code}`);
+    if (weddingId) {
+      await api.updateMyWedding(weddingId, data);
+      navigate(`/admin/dashboard/${weddingId}`);
+      return;
+    }
+    const result = await api.createMyWedding(data);
+    navigate(`/admin/dashboard/${result.wedding.id}`);
   }
 
   const panel = () => {
@@ -390,52 +402,3 @@ export default function EditorPage() {
     </div>
   );
 }
-
-
-
-
-// import "./EditorPage.css";
-// import { useState } from "react";
-// import { useNavigate } from "react-router-dom";
-
-
-// export default function EditorPage() {
-//     const navigate = useNavigate();
-//     const [text, setText] = useState("");
-//     const [qr, setQr] = useState("http://localhost:3000");
-
-//     async function handleStart() {
-//         const res = await fetch(`${qr}/qr`,{
-//             method: "POST",
-//             headers:{
-//                 "Content-Type": "application/json",
-//             },
-//             body : JSON.stringify({text}),
-//         })  //응답
-
-//         const data = await res.json();
-//         navigate(`/qr/${data.code}`); //응답에서 받은 코드로 이동
-//     }
-
-//     return (
-//         <main className="landing">
-//             <div className="overlay" />
-
-//             <section className="landing-content">
-//                 <img src="/images/logo.png" alt="logo" className="logo" />
-
-//                 <h1>MomentIn</h1>
-
-//                 <input
-//                     type="text"
-//                     placeholder="글자 입력"
-//                     onChange={(e) => setText(e.target.value)}
-//                 />
-
-//                 <button onClick={handleStart}>
-//                     완성하기
-//                 </button>
-//             </section>
-//         </main>
-//     );
-// }

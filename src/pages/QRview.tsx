@@ -8,7 +8,8 @@ export default function QRview() {
   const [qrImg, setQrImg] = useState('');
 
   useEffect(() => {
-    QRCode.toDataURL(`${import.meta.env.VITE_FRONT_URL}/show/${code}`, {
+    const frontUrl = import.meta.env.VITE_FRONT_URL ?? window.location.origin;
+    QRCode.toDataURL(`${frontUrl}/enter?code=${code}`, {
       width: 160,
       margin: 2,
       color: { dark: '#2c1a0e', light: '#ffffff' },
@@ -19,11 +20,9 @@ export default function QRview() {
     <div className="qrview-root">
       <img src="/images/QRbackground.png" alt="" className="qrview-bg" />
       <div className="qrview-bg-overlay" />
-
       <header className="qrview-header">
         <span className="qrview-logo">MomentIn</span>
       </header>
-
       <div className="qrview-card">
         <div className="qrview-left">
           <p>모먼트인에 접속하고 신랑<span className="heart">♥</span>신부를<br />축하해주세요!</p>
@@ -36,7 +35,6 @@ export default function QRview() {
           {qrImg && <img src={qrImg} alt="QR" className="qrview-qr" />}
         </div>
       </div>
-
       <p className="qrview-script">We're getting married</p>
     </div>
   );

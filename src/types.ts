@@ -3,6 +3,7 @@ export type ColorPreset = "classic" | "garden" | "ocean" | "forest";
 export type Attendance = "yes" | "no" | "undecided";
 export type MealPreference = "한식" | "양식" | "없음";
 
+<<<<<<< HEAD
 export interface ColorTheme {
   bg: string;
   text: string;
@@ -11,6 +12,28 @@ export interface ColorTheme {
   buttonText: string;
   preset: ColorPreset;
 }
+=======
+export type Wedding = {
+  id: string;
+  admin_id?: string;
+  theme_code?: string;
+  invitation_json?: string;
+  invitation?: Record<string, unknown> | null;
+  wedding_date?: string;
+  wedding_time?: string;
+  location_name?: string;
+  location_address?: string;
+  status?: string;
+  created_at?: string;
+  admin?: {
+    display_name?: string;
+  };
+  _count?: {
+    photos?: number;
+    guestbooks?: number;
+  };
+};
+>>>>>>> bc5569aacd5d294a207982e708aace1129f92cb3
 
 export interface InvitationCover {
   imageUrl: string;
