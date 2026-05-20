@@ -57,9 +57,7 @@ function ScrollColumn({
     <div className="scroll-column">
       <div
         className={`scroll-track ${direction === "up" ? "scroll-up" : "scroll-down"}`}
-        style={{
-          animationDuration: `${duration}s`,
-        }}
+        style={{ animationDuration: `${duration}s` }}
       >
         {duplicated.map((photo, i) => (
           <PolaroidCard key={`${photo.id}_${i}`} photo={photo} tilt={0} />
