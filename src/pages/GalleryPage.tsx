@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { api } from "../api";
+import type { Photo as ApiPhoto, Wedding } from "../types";
 import "./GalleryPage.css";
 
 export interface Photo {
@@ -6,27 +9,18 @@ export interface Photo {
   name: string;
   src: string;
   likes: number;
-  likedBy: string[];
   timestamp: number;
 }
 
-const STORAGE_KEY = "momentin_gallery";
-
-function loadPhotos(): Photo[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+function toPhoto(photo: ApiPhoto): Photo {
+  return {
+    id: photo.id,
+    name: photo.user?.display_name ?? "Guest",
+    src: photo.image_url,
+    likes: photo.like_count,
+    timestamp: photo.created_at ? new Date(photo.created_at).getTime() : Date.now(),
+  };
 }
-
-function savePhotos(photos: Photo[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(photos));
-  window.dispatchEvent(new Event("gallery_updated"));
-}
-
-export { loadPhotos, savePhotos, STORAGE_KEY };
 
 function PolaroidCard({ photo, tilt }: { photo: Photo; tilt: number }) {
   return (
@@ -35,11 +29,7 @@ function PolaroidCard({ photo, tilt }: { photo: Photo; tilt: number }) {
       style={{ "--tilt": `${tilt}deg` } as React.CSSProperties}
     >
       <div className="gallery-card__img-wrap">
-        <img
-          src={photo.src}
-          alt={`${photo.name}님의 사진`}
-          className="gallery-card__img"
-        />
+        <img src={photo.src} alt={`${photo.name} photo`} className="gallery-card__img" />
       </div>
       <div className="gallery-card__footer">
         <span className="gallery-card__name">{photo.name}</span>
@@ -51,6 +41,7 @@ function PolaroidCard({ photo, tilt }: { photo: Photo; tilt: number }) {
     </div>
   );
 }
+
 function ScrollColumn({
   photos,
   direction,
@@ -65,21 +56,11 @@ function ScrollColumn({
   return (
     <div className="scroll-column">
       <div
-        className={`scroll-track ${
-          direction === "up"
-            ? "scroll-up"
-            : "scroll-down"
-        }`}
-        style={{
-          animationDuration: `${duration}s`,
-        }}
+        className={`scroll-track ${direction === "up" ? "scroll-up" : "scroll-down"}`}
+        style={{ animationDuration: `${duration}s` }}
       >
         {duplicated.map((photo, i) => (
-          <PolaroidCard
-            key={`${photo.id}_${i}`}
-            photo={photo}
-            tilt={0}
-          />
+          <PolaroidCard key={`${photo.id}_${i}`} photo={photo} tilt={0} />
         ))}
       </div>
     </div>
@@ -87,20 +68,41 @@ function ScrollColumn({
 }
 
 export default function GalleryPage() {
-  const [photos, setPhotos] = useState<Photo[]>(loadPhotos);
+  const { code } = useParams<{ code: string }>();
+  const [wedding, setWedding] = useState<Wedding | null>(null);
+  const [invitation, setInvitation] = useState<any>(null);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [error, setError] = useState("");
 
-  const sync = useCallback(() => setPhotos(loadPhotos()), []);
+  const load = useCallback(async () => {
+    if (!code) {
+      setError("갤러리 코드가 없습니다.");
+      return;
+    }
+
+    try {
+      setError("");
+      const qr = await api.getQr(code);
+      setWedding(qr.wedding);
+      setInvitation(qr.data);
+      const nextPhotos = await api.getPhotos(qr.wedding.id);
+      setPhotos(nextPhotos.map(toPhoto));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "갤러리를 불러오지 못했습니다.");
+    }
+  }, [code]);
 
   useEffect(() => {
-    window.addEventListener("gallery_updated", sync);
-    window.addEventListener("storage", sync);
-    const interval = setInterval(sync, 2000);
-    return () => {
-      window.removeEventListener("gallery_updated", sync);
-      window.removeEventListener("storage", sync);
-      clearInterval(interval);
-    };
-  }, [sync]);
+    load();
+    const interval = setInterval(load, 2000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  const title = useMemo(() => {
+    const groom = invitation?.groomName ?? "신랑";
+    const bride = invitation?.brideName ?? "신부";
+    return `${groom} ♥ ${bride}`;
+  }, [invitation]);
 
   const sorted = [...photos].sort((a, b) => b.timestamp - a.timestamp);
   const col0 = sorted.filter((_, i) => i % 3 === 0);
@@ -112,16 +114,22 @@ export default function GalleryPage() {
       <header className="gallery-header">
         <div className="gallery-header__inner">
           <span className="gallery-header__names">
-            김미림 <span className="gallery-header__heart">♥</span> 이미림
+            {title}
           </span>
           <div className="gallery-header__divider" />
-          <span className="gallery-header__date">2026.06.20</span>
+          <span className="gallery-header__date">
+            {wedding?.wedding_date?.slice(0, 10) ?? "MomentIn"}
+          </span>
         </div>
       </header>
 
-      {photos.length === 0 ? (
+      {error ? (
         <div className="gallery-empty">
-          <p>하객분들의 소중한 순간을 기다리고 있어요 📷</p>
+          <p>{error}</p>
+        </div>
+      ) : photos.length === 0 ? (
+        <div className="gallery-empty">
+          <p>하객분들의 소중한 순간을 기다리고 있어요.</p>
         </div>
       ) : (
         <main className="gallery-columns">

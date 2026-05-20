@@ -14,5 +14,5 @@ export function formatWeddingDate(value?: string) {
 }
 
 export function getWeddingTitle(displayName?: string) {
-  return displayName ? `${displayName} 님의 순간` : '김다영 ♥ 오시온';
+  return displayName ? `${displayName} 님의 순간` : '김다영 님의 웨딩';
 }
