@@ -345,7 +345,12 @@ export default function EditorPage() {
     if (!weddingId) return;
     api.getMyWedding(weddingId).then((wedding) => {
       const invitation = wedding.invitation ?? {};
-      setData((prev) => ({ ...prev, ...invitation }));
+      if (invitation && typeof invitation === "object") {
+        setData((prev) => ({
+          ...prev,
+          ...invitation,
+        }));
+      }
     });
   }, [weddingId]);
 
