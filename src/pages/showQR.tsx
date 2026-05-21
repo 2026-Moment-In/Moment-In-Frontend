@@ -1,5 +1,62 @@
+<<<<<<< Updated upstream
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+=======
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { Camera, Image, MapPin, MessageCircle, Navigation, Users } from 'lucide-react';
+import { api } from '../api';
+import './showQR.css';
+
+type InvitationData = {
+  groomName?: string;
+  brideName?: string;
+  weddingDate?: string;
+  weddingTime?: string;
+  greetingTitle?: string;
+  greetingBody?: string;
+  venueName?: string;
+  venueAddress?: string;
+  venueDetail?: string;
+  transport?: string;
+  transportGuide?: string;
+  nearbyPlaces?: string[];
+};
+
+function formatDate(value?: string | null) {
+  if (!value) return '날짜 미정';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  }).format(date);
+}
+
+function InfoSection({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="invite-section">
+      <div className="invite-section__title">
+        {icon}
+        <h3>{title}</h3>
+      </div>
+      <div className="invite-section__body">{children}</div>
+    </section>
+  );
+}
+>>>>>>> Stashed changes
 
 export default function ShowQR() {
   const { code } = useParams<{ code: string }>();
