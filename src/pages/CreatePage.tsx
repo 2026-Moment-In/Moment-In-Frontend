@@ -336,6 +336,28 @@ export default function CreatePage() {
   const navigate = useNavigate();
   const { createInvitation } = useInviteStore();
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // 1. 주소창에 백엔드가 달아놓은 ?token=... 파라미터 확인
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    if (token) {
+      localStorage.setItem("accessToken", token);
+      setIsLoggedIn(true);
+
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      showToast("✅ 카카오 인증 로그인이 완료되었습니다!");
+    } else {
+      // 주소창엔 없어도 이미 로그인을 해둬서 금고에 토큰이 보관되어 있다면 인정!
+      if (localStorage.getItem("accessToken")) {
+        setIsLoggedIn(true);
+      }
+    }
+  }, []);
+
   const [activeTab, setActiveTab]           = useState<TabId>("cover");
   const [submitting, setSubmitting]         = useState(false);
   const [saved, setSaved]                   = useState(false);

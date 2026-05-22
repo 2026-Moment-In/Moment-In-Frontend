@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
@@ -17,7 +15,7 @@ type Invitation = {
 
 function getInvitation(wedding?: Wedding | null): Invitation {
   if (!wedding) return {};
-  if (wedding.invitation) return wedding.invitation as Invitation;
+  if ((wedding as any).invitation) return (wedding as any).invitation as Invitation;
 
   try {
     return wedding.invitation_json ? JSON.parse(wedding.invitation_json) : {};
@@ -281,4 +279,3 @@ export default function DashboardPage() {
     </main>
   );
 }
->>>>>>> Stashed changes

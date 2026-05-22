@@ -2,7 +2,10 @@ import "./LandingPage.css";
 
 export default function LandingPage() {
   function handleStart() {
-    window.location.href = "http://localhost:3000/auth/kakao?prompt=login"; //로그인 할 때마다 로그인 창 다시 보여주기
+    const clientId = "7417088f1abcfd3269d7b42b6a933f81";
+    const redirectUri = "http://localhost:3000/auth/kakao/callback";
+    
+    window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&prompt=login`;
   }
 
   return (

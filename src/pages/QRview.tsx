@@ -13,14 +13,10 @@ export default function QRview() {
   const [invitationData, setInvitationData] = useState<Record<string, any> | null>(null);
 
   useEffect(() => {
-<<<<<<< Updated upstream
-    QRCode.toDataURL(`${import.meta.env.VITE_FRONT_URL}/show/${code}`, {
-=======
     if (!code) return;
 
     const frontUrl = import.meta.env.VITE_FRONT_URL ?? window.location.origin;
     QRCode.toDataURL(`${frontUrl}/enter?code=${code}`, {
->>>>>>> Stashed changes
       width: 160,
       margin: 2,
       color: { dark: '#2c1a0e', light: '#ffffff' },
