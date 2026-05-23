@@ -3,7 +3,7 @@ import "./LandingPage.css";
 export default function LandingPage() {
   function handleStart() {
     const clientId = "7417088f1abcfd3269d7b42b6a933f81";
-    const redirectUri = "http://localhost:3000/auth/kakao/callback";
+    const redirectUri = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/auth/kakao/callback`;
     
     window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&prompt=login`;
   }

@@ -334,7 +334,7 @@ export default function EditorPage() {
   const navigate = useNavigate();
 
   async function handleStart() {
-    const res = await fetch("http://localhost:3000/qr", {
+    const res = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/qr`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
