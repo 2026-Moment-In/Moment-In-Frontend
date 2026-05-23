@@ -61,7 +61,10 @@ export default function QR() {
           <p className="qr-sub">QR코드나 접속 코드를 하객들에게 전달해주세요!</p>
 
           {/* 버튼 */}
-          <button className="qr-btn" onClick={() => navigate(`/qrview/${code}`)}>
+          <button className="qr-btn" onClick={() => navigate(`/manage?code=${code}`)}>
+            관리 페이지로 이동
+          </button>
+          <button className="qr-btn" style={{ background: 'transparent', color: '#3b2010', border: '1.5px solid #3b2010' }} onClick={() => navigate(`/qrview/${code}`)}>
             화면에 코드 띄우기
           </button>
         </div>
