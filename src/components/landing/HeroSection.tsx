@@ -98,16 +98,16 @@ export default function HeroSection() {
               transition={{ repeat: Infinity, duration: 3 }}
               className="absolute -left-10 top-1/4 bg-white rounded-2xl shadow-xl px-4 py-3"
             >
-              <p className="text-charcoal font-medium text-xs">✨ 방금 공유됨</p>
-              <p className="text-muted text-xs">조회 234회</p>
+              <p className="text-charcoal font-medium text-xs">✨ 제일 잘나온 사진은?</p>
+              <p className="text-muted text-xs">유미님의 사진!</p>
             </motion.div>
             <motion.div
               animate={{ y: [4, -4, 4] }}
               transition={{ repeat: Infinity, duration: 3.5 }}
               className="absolute -right-8 bottom-1/3 bg-white rounded-2xl shadow-xl px-4 py-3"
             >
-              <p className="text-charcoal font-medium text-xs">💌 RSVP</p>
-              <p className="text-muted text-xs">7명 응답</p>
+              <p className="text-charcoal font-medium text-xs">💌 주변 놀거리</p>
+              <p className="text-muted text-xs">투썸플레이스 신월점</p>
             </motion.div>
           </div>
         </motion.div>

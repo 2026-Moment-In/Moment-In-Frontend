@@ -1,175 +1,178 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api, DEMO_USER_ID } from "../../api";
-import type { Photo as ApiPhoto, Wedding } from "../../types";
+import { api } from "../../api";
+import type { Photo, QrResponse } from "../../types";
 import "./GalleryPage.css";
 
-type Photo = {
-  id: string;
-  name: string;
-  src: string;
-  likes: number;
-};
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
-function toPhoto(photo: ApiPhoto): Photo {
-  return {
-    id: photo.id,
-    name: photo.user?.display_name ?? "Guest",
-    src: photo.image_url,
-    likes: photo.like_count,
-  };
-}
-
-function getGuestUserId() {
-  const key = "momentin_guest_user_id";
-  const saved = localStorage.getItem(key);
-
-  if (saved) {
-    return saved;
+function getJwtPayload(): { sub: string; displayName: string } | null {
+  const token = localStorage.getItem("momentin_access_token");
+  if (!token) return null;
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64).split("").map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
   }
-
-  const id = crypto.randomUUID?.() ?? DEMO_USER_ID;
-  localStorage.setItem(key, id);
-  return id;
 }
 
 export default function GalleryPage() {
   const { code } = useParams<{ code: string }>();
-  const [wedding, setWedding] = useState<Wedding | null>(null);
-  const [invitation, setInvitation] = useState<any>(null);
+  const [qrData, setQrData] = useState<QrResponse | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [name, setName] = useState("");
-
+  const [name, setName] = useState(() => getJwtPayload()?.displayName ?? "");
+  const [uploading, setUploading] = useState(false);
+  const [showTop3, setShowTop3] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const weddingId = wedding?.id;
-
-  const title = useMemo(() => {
-    const groom = invitation?.groomName ?? "신랑";
-    const bride = invitation?.brideName ?? "신부";
-    return `${groom} ♥ ${bride}`;
-  }, [invitation]);
-
-  async function load() {
-    if (!code) {
-      setError("입장 코드가 없습니다.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setError("");
-      const qr = await api.getQr(code);
-      setWedding(qr.wedding);
-      setInvitation(qr.data);
-      const nextPhotos = await api.getPhotos(qr.wedding.id);
-      setPhotos(nextPhotos.map(toPhoto));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "갤러리를 불러오지 못했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   useEffect(() => {
-    load();
+    const token = localStorage.getItem("momentin_access_token");
+    if (!token) {
+      sessionStorage.setItem("momentin_return_url", `/gallery/${code ?? ""}`);
+      window.location.href = `${API_URL}/auth/kakao`;
+      return;
+    }
+    if (!code) return;
+
+    api.getQr(code)
+      .then((res) => {
+        setQrData(res);
+        if (res.wedding?.id) {
+          api.getPhotos(res.wedding.id).then(setPhotos).catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, [code]);
 
-  async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
-
     if (!selected) return;
-
     setFile(selected);
-
     const reader = new FileReader();
-    reader.onload = () => {
-      setPreview(reader.result as string);
-    };
+    reader.onload = () => setPreview(reader.result as string);
     reader.readAsDataURL(selected);
   }
 
   async function handleUpload() {
-    if (!file || !name.trim() || !weddingId) return;
-
+    if (!file || !qrData?.wedding?.id) return;
+    setUploading(true);
     try {
-      const saved = await api.uploadPhoto(weddingId, file, getGuestUserId(), name.trim());
-      setPhotos((current) => [toPhoto(saved), ...current]);
+      const jwt = getJwtPayload();
+      const userId = jwt?.sub ?? "00000000-0000-0000-0000-000000000001";
+      const newPhoto = await api.uploadPhoto(
+        qrData.wedding.id,
+        file,
+        userId,
+        name.trim() || undefined,
+      );
+      setPhotos((prev) => [newPhoto, ...prev]);
       setOpen(false);
       setPreview(null);
       setFile(null);
       setName("");
-
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "사진 업로드에 실패했습니다.");
-    }
-  }
-
-  async function handleLike(id: string) {
-    const previous = photos;
-    setPhotos((current) =>
-      current.map((photo) =>
-        photo.id === id ? { ...photo, likes: photo.likes + 1 } : photo,
-      ),
-    );
-
-    try {
-      const updated = await api.likePhoto(id);
-      setPhotos((current) =>
-        current.map((photo) => (photo.id === id ? toPhoto(updated) : photo)),
-      );
+      if (inputRef.current) inputRef.current.value = "";
     } catch {
-      setPhotos(previous);
+      /* fail silently */
+    } finally {
+      setUploading(false);
     }
   }
+
+  async function handleLike(photoId: string) {
+    try {
+      const updated = await api.likePhoto(photoId);
+      setPhotos((prev) => prev.map((p) => (p.id === photoId ? updated : p)));
+    } catch {
+      /* fail silently */
+    }
+  }
+
+  const invData = (qrData?.data ?? {}) as Record<string, string>;
+  const groomName = invData.groomName ?? "신랑";
+  const brideName = invData.brideName ?? "신부";
+  const weddingDate = (
+    invData.weddingDate ??
+    qrData?.wedding?.wedding_date ??
+    ""
+  ).replace(/-/g, ".");
+
+  const visiblePhotos = photos.filter((p) => !p.is_hidden);
+  const top3 = [...visiblePhotos]
+    .sort((a, b) => b.like_count - a.like_count)
+    .slice(0, 3);
 
   return (
     <main className="m-gallery">
       <header className="m-gallery-header">
         <div className="m-gallery-header-content">
-          <span className="m-gallery-header-left">{title}</span>
-          <span className="m-gallery-divider">|</span>
-          <span className="m-gallery-date">
-            {wedding?.wedding_date?.slice(0, 10) ?? "MomentIn"}
+          <span className="m-gallery-header-left">
+            {groomName} <span className="heart">♥</span> {brideName}
           </span>
+          <span className="m-gallery-divider">|</span>
+          <span className="m-gallery-date">{weddingDate}</span>
         </div>
-
-        <button className="m-gallery-top3">TOP 3</button>
+        <button className="m-gallery-top3" onClick={() => setShowTop3((v) => !v)}>
+          TOP 3
+        </button>
       </header>
 
-      {loading ? (
-        <section className="m-gallery-grid">불러오는 중...</section>
-      ) : error ? (
-        <section className="m-gallery-grid">{error}</section>
-      ) : (
-        <section className="m-gallery-grid">
-          {photos.map((photo) => (
-            <article className="photo-card" key={photo.id}>
-              <img src={photo.src} alt={photo.name} />
-
-              <div className="photo-footer">
-                <span>{photo.name}</span>
-
-                <button onClick={() => handleLike(photo.id)}>♥ {photo.likes}</button>
+      {showTop3 && top3.length > 0 && (
+        <div style={{ background: "#fff", padding: "16px", borderBottom: "1px solid #ddd" }}>
+          <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, textAlign: "center", color: "#2c1800" }}>
+            ❤️ TOP 3 인기 사진
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            {top3.map((p, i) => (
+              <div key={p.id} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ position: "relative" }}>
+                  <img
+                    src={p.image_url}
+                    alt=""
+                    style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", borderRadius: 8, display: "block" }}
+                  />
+                  <span style={{
+                    position: "absolute", top: 4, left: 4,
+                    background: i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : "#CD7F32",
+                    color: "#fff", borderRadius: "50%", width: 20, height: 20,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, fontWeight: 700,
+                  }}>{i + 1}</span>
+                </div>
+                <p style={{ fontSize: 11, color: "#666", marginTop: 4 }}>♡ {p.like_count}</p>
               </div>
-            </article>
-          ))}
-        </section>
+            ))}
+          </div>
+        </div>
       )}
+
+      <section className="m-gallery-grid">
+        {visiblePhotos.map((photo) => (
+          <article className="photo-card" key={photo.id}>
+            <img src={photo.image_url} alt={photo.user?.display_name ?? ""} />
+            <div className="photo-footer">
+              <span>{photo.user?.display_name ?? "익명"}</span>
+              <button onClick={() => handleLike(photo.id)}>♡ {photo.like_count}</button>
+            </div>
+          </article>
+        ))}
+        {visiblePhotos.length === 0 && (
+          <p style={{ gridColumn: "1/-1", textAlign: "center", color: "#888", fontSize: 13, padding: "40px 0" }}>
+            아직 업로드된 사진이 없습니다
+          </p>
+        )}
+      </section>
 
       <button className="floating-upload" onClick={() => setOpen(true)}>
         <div className="floating-icon">
           <img src="/images/camera_icon.png" alt="icon" className="icon" />
         </div>
-
         <span>사진 전달하기</span>
       </button>
 
@@ -184,35 +187,27 @@ export default function GalleryPage() {
                   <div className="upload-icon">
                     <img src="/images/upload_icon.png" alt="icon" className="icon" />
                   </div>
-
                   <button>파일 업로드</button>
                 </>
               )}
             </div>
 
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleImage}
-            />
+            <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleImage} />
 
             <input
               type="text"
-              placeholder="이름을 작성해주세요"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              readOnly
               className="name-input"
+              style={{ opacity: 0.75, cursor: "default" }}
             />
 
             <div className="mission">
-              <strong>미션: 우리만의 사진 작가가 되어주세요</strong>
-
+              <strong>📸 미션: 우리만의 사진작가가 되어주세요!</strong>
               <p>
-                사진을 갤러리에 업로드해주시고
+                사진을 갤러리에 업로드 해주시고
                 <br />
-                소중한 결혼식의 추억을 함께 남겨주세요.
+                저희 결혼식의 추억을 함께 남겨주세요 💛
               </p>
             </div>
 
@@ -220,9 +215,13 @@ export default function GalleryPage() {
               <button className="cancel-btn" onClick={() => setOpen(false)}>
                 닫기
               </button>
-
-              <button className="submit-btn" onClick={handleUpload}>
-                완료하기
+              <button
+                className="submit-btn"
+                onClick={handleUpload}
+                disabled={uploading || !file}
+                style={{ opacity: uploading || !file ? 0.6 : 1 }}
+              >
+                {uploading ? "업로드 중..." : "완료하기"}
               </button>
             </div>
           </div>

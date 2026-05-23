@@ -32,7 +32,7 @@ function getGuestUserId() {
   return id;
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) return "날짜 미정";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;

@@ -6,14 +6,6 @@
 
 body {
   margin: 0;
-
-  background: #0e0e0e;
-
-  color: #f5f1ea;
-
-  font-family: "Noto Serif KR", serif;
-
-  overflow: hidden;
 }
 
 /* 전체 */
@@ -23,6 +15,8 @@ body {
   height: 100vh;
 
   background: #0e0e0e;
+  color: #f5f1ea;
+  font-family: "Noto Serif KR", serif;
 
   overflow: hidden;
 }

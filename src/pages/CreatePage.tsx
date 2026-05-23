@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, Check, Save, Plus, X, Eye,
   Copy, ChevronDown, ChevronUp, Trash2, MapPin,
@@ -13,6 +13,7 @@ import { DEMO_COVER_IMAGES } from "../demo";
 import { useInviteStore } from "../store/inviteStore";
 import type { CoupleInfo, InvitationCover, ColorTheme, NoticeItem, NearbyItem } from "../types";
 import KakaoMap from "../components/common/KakaoMap";
+import { api } from "../api";
 
 type TabId =
   | "cover" | "style" | "greeting" | "basicinfo" | "ceremony"
@@ -333,11 +334,45 @@ const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm f
 
 export default function CreatePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editWeddingId = searchParams.get("weddingId");
+  const isEditMode = !!editWeddingId;
   const { createInvitation } = useInviteStore();
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // 1. 주소창에 백엔드가 달아놓은 ?token=... 파라미터 확인
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    if (token) {
+      localStorage.setItem("momentin_access_token", token);
+      setIsLoggedIn(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      showToast("✅ 카카오 인증 로그인이 완료되었습니다!");
+    } else {
+      if (localStorage.getItem("momentin_access_token")) {
+        setIsLoggedIn(true);
+      }
+    }
+  }, []);
 
   const [activeTab, setActiveTab]           = useState<TabId>("cover");
   const [submitting, setSubmitting]         = useState(false);
   const [saved, setSaved]                   = useState(false);
+  const [kakaoUser, setKakaoUser]           = useState<string | null>(() => {
+    try {
+      const token = localStorage.getItem("momentin_access_token");
+      if (!token) return null;
+      const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const json = decodeURIComponent(
+        atob(base64).split("").map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")
+      );
+      const payload = JSON.parse(json);
+      return (payload.displayName as string) ?? null;
+    } catch { return null; }
+  });
   const [motionKey, setMotionKey]           = useState(0);
   const [previewMode, setPreviewMode]       = useState<"cover" | "full">("cover");
   const [showMobilePreview, setShowMobilePreview] = useState(false);
@@ -395,8 +430,6 @@ export default function CreatePage() {
   const [groomMomDeceased, setGroomMomDeceased] = useState(false);
   const [brideDadDeceased, setBrideDadDeceased] = useState(false);
   const [brideMomDeceased, setBrideMomDeceased] = useState(false);
-  const [showParentContact, setShowParentContact] = useState(false);
-  const [showTitleEdit, setShowTitleEdit]     = useState(false);
 
   const [ceremonyTitle, setCeremonyTitle]     = useState("예식 안내");
   const [showCeremonySubtitle]                = useState(true);
@@ -417,9 +450,6 @@ export default function CreatePage() {
   const [carInfo, setCarInfo]               = useState("강남 방면: 남산 1호 터널 → 을지로 → 시청");
   const [walkInfo, setWalkInfo]             = useState("");
   const [transportTab, setTransportTab]     = useState<TransportTab>("subway");
-  const [useCustomMarker, setUseCustomMarker] = useState(false);
-  const [markerTitle, setMarkerTitle]       = useState(`${groomName} ❤ ${brideName}`);
-  const [markerIconIdx, setMarkerIconIdx]   = useState(2);
 
   const [groomAccounts, setGroomAccounts]   = useState<Account[]>([{ bank: "국민은행", holder: "이준호", number: "123-456-789012", relation: "신랑" }]);
   const [brideAccounts, setBrideAccounts]   = useState<Account[]>([{ bank: "신한은행", holder: "박서연", number: "110-123-456789", relation: "신부" }]);
@@ -479,6 +509,91 @@ export default function CreatePage() {
     const f = e.target.files?.[0]; if (f) setGreetingPhoto(fileToUrl(f)); e.target.value = "";
   };
 
+  // 수정 모드: 기존 청첩장 데이터 로드
+  useEffect(() => {
+    if (!editWeddingId) return;
+    api.getMyWedding(editWeddingId).then((wedding) => {
+      const d = wedding.invitation_json ? JSON.parse(wedding.invitation_json) : {};
+      if (d.bgColor) setBgColor(d.bgColor);
+      if (d.fontColor) setFontColor(d.fontColor);
+      if (d.fontFamily) setFontFamily(d.fontFamily);
+      if (d.bgTexture !== undefined) setBgTexture(d.bgTexture);
+      if (d.coverImage) setCoverImage(d.coverImage);
+      if (d.coverImage2) setCoverImage2(d.coverImage2);
+      if (d.coverLayout) setCoverLayout(d.coverLayout);
+      if (d.motionType) setMotionType(d.motionType);
+      if (d.showGradient !== undefined) setShowGradient(d.showGradient);
+      if (d.gradientDir) setGradientDir(d.gradientDir);
+      if (d.gradientTone) setGradientTone(d.gradientTone);
+      if (d.coverTextColor) setCoverTextColor(d.coverTextColor);
+      if (d.showCountdown !== undefined) setShowCountdown(d.showCountdown);
+      if (d.brightness !== undefined) setBrightness(d.brightness);
+      if (d.contrast !== undefined) setContrast(d.contrast);
+      if (d.saturation !== undefined) setSaturation(d.saturation);
+      if (d.grayscale !== undefined) setGrayscale(d.grayscale);
+      if (d.greetingTitle) setGreetingTitle(d.greetingTitle);
+      if (d.greetingBody) setGreetingMsg(d.greetingBody);
+      if (d.greetingPhoto) setGreetingPhoto(d.greetingPhoto);
+      if (d.greetingAnim) setGreetingAnim(d.greetingAnim);
+      if (d.greetingBgPos) setGreetingBgPos(d.greetingBgPos);
+      if (d.groomName) setGroomName(d.groomName);
+      if (d.brideName) setBrideName(d.brideName);
+      if (d.groomRelation) setGroomRelation(d.groomRelation);
+      if (d.brideRelation) setBrideRelation(d.brideRelation);
+      if (d.groomIntro) setGroomIntro(d.groomIntro);
+      if (d.brideIntro) setBrideIntro(d.brideIntro);
+      if (d.groomDadName) setGroomDadName(d.groomDadName);
+      if (d.groomMomName) setGroomMomName(d.groomMomName);
+      if (d.brideDadName) setBrideDadName(d.brideDadName);
+      if (d.brideMomName) setBrideMomName(d.brideMomName);
+      if (d.groomDadDeceased !== undefined) setGroomDadDeceased(d.groomDadDeceased);
+      if (d.groomMomDeceased !== undefined) setGroomMomDeceased(d.groomMomDeceased);
+      if (d.brideDadDeceased !== undefined) setBrideDadDeceased(d.brideDadDeceased);
+      if (d.brideMomDeceased !== undefined) setBrideMomDeceased(d.brideMomDeceased);
+      if (d.groomPhoto) setGroomPhoto(d.groomPhoto);
+      if (d.bridePhoto) setBridePhoto(d.bridePhoto);
+      if (d.basicInfoPreset) setBasicInfoPreset(d.basicInfoPreset);
+      if (d.basicInfoTitle) setBasicInfoTitle(d.basicInfoTitle);
+      if (d.groomFirst !== undefined) setGroomFirst(d.groomFirst);
+      if (d.hideParents !== undefined) setHideParents(d.hideParents);
+      if (d.showContact !== undefined) setShowContact(d.showContact);
+      if (d.groomContact) setGroomContact(d.groomContact);
+      if (d.brideContact) setBrideContact(d.brideContact);
+      if (d.dateBlockTitle) setCeremonyTitle(d.dateBlockTitle);
+      if (d.showDDay !== undefined) setShowDDay(d.showDDay);
+      if (d.weddingDate) setWeddingDate(d.weddingDate);
+      if (d.weddingTime) setWeddingTime(d.weddingTime);
+      if (d.venueName) setVenueName(d.venueName);
+      if (d.venueDetail) setHallName(d.venueDetail);
+      if (d.venueAddress) setAddress(d.venueAddress);
+      if (d.lat) setLat(d.lat);
+      if (d.lng) setLng(d.lng);
+      if (d.locationTitle) setLocationTitle(d.locationTitle);
+      if (d.subwayInfo) setSubwayInfo(d.subwayInfo);
+      if (d.busInfo) setBusInfo(d.busInfo);
+      if (d.carInfo) setCarInfo(d.carInfo);
+      if (d.walkInfo) setWalkInfo(d.walkInfo);
+      if (d.accountTitle) setAccountTitle(d.accountTitle);
+      if (d.accountMsg) setAccountMsg(d.accountMsg);
+      if (d.accountMsgEnabled !== undefined) setAccountMsgEnabled(d.accountMsgEnabled);
+      if (d.accountGroomFirst !== undefined) setAccountGroomFirst(d.accountGroomFirst);
+      if (d.groomAccounts?.length) setGroomAccounts(d.groomAccounts);
+      if (d.brideAccounts?.length) setBrideAccounts(d.brideAccounts);
+      if (d.noticeTitle) setNoticeTitle(d.noticeTitle);
+      if (d.noticeItems?.length) setNoticeItems(d.noticeItems);
+      if (d.nearbyTitle) setNearbyTitle(d.nearbyTitle);
+      if (d.nearbySubtitle) setNearbySubtitle(d.nearbySubtitle);
+      if (d.nearbyItems?.length) setNearbyItems(d.nearbyItems);
+      if (d.gallery?.length) setGallery(d.gallery);
+      if (d.galleryLayout) setGalleryLayout(d.galleryLayout);
+      if (d.msgTitle) setMsgTitle(d.msgTitle);
+      if (d.messageMaxLen) setMessageMaxLen(d.messageMaxLen);
+      if (d.endingMsg) setEndingMsg(d.endingMsg);
+      if (d.showPetals !== undefined) setShowPetals(d.showPetals);
+    }).catch(() => showToast("❌ 청첩장 데이터를 불러오지 못했습니다."));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editWeddingId]);
+
   const replayMotion = useCallback(() => setMotionKey((k) => k + 1), []);
   const handleSelectMotion = (m: MotionType) => { setMotionType(m); setMotionKey((k) => k + 1); };
   const motionCfg     = MOTIONS.find((m) => m.type === motionType)!;
@@ -506,22 +621,90 @@ export default function CreatePage() {
   const imgFilter = `brightness(${brightness}) contrast(${contrast}) saturate(${saturation}) grayscale(${grayscale})`;
 
   const handlePublish = async () => {
+    const token = localStorage.getItem("momentin_access_token");
+    if (!token) {
+      sessionStorage.setItem("momentin_return_url", "/create");
+      window.location.href = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/auth/kakao`;
+      return;
+    }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    const couple: CoupleInfo = {
-      groomName, brideName,
-      groomFamily: "", brideFamily: "",
-      weddingDate, weddingTime, venue: venueName, venueAddress: address,
-      venueDetail: hallName, message: greetingMsg,
-    };
-    const cover: InvitationCover = {
-      imageUrl: coverImage, motion: motionType,
-      letteringText: `${groomName} ♥ ${brideName}`, showGradient,
-    };
-    const colorTheme: ColorTheme = { bg: bgColor, text: fontColor, accent: fontColor, button: fontColor, buttonText: bgColor, preset: "classic" };
-    const location = { subwayInfo, busInfo, carInfo, walkInfo, markerTitle, markerIconIdx };
-    const code = createInvitation({ couple, cover, colorTheme, location, noticeItems, noticeTitle, nearbyItems, nearbyTitle, nearbySubtitle, msgTitle });
-    navigate(`/manage?code=${code}`);
+    try {
+      const transportInfo: Record<string, string> = {};
+      if (subwayInfo.trim()) transportInfo['지하철'] = subwayInfo.trim();
+      if (busInfo.trim())    transportInfo['버스']   = busInfo.trim();
+      if (carInfo.trim())    transportInfo['자가용'] = carInfo.trim();
+      if (walkInfo.trim())   transportInfo['도보']   = walkInfo.trim();
+
+      const safeUrl = (url: string) => (url && !url.startsWith('blob:') ? url : null);
+
+      const requestData = {
+        // 스타일
+        bgColor, fontColor, fontFamily, bgTexture,
+        // 커버
+        coverImage:   safeUrl(coverImage),
+        coverImage2:  safeUrl(coverImage2),
+        coverLayout,  motionType,
+        showGradient, gradientDir, gradientTone,
+        coverTextColor, showCountdown,
+        brightness, contrast, saturation, grayscale,
+        // 인사말
+        greetingTitle, greetingBody: greetingMsg,
+        greetingPhoto: safeUrl(greetingPhoto),
+        greetingAnim,  greetingBgPos,
+        // 기본 정보
+        groomName,  brideName,
+        groomRelation, brideRelation,
+        groomIntro, brideIntro,
+        groomDadName, groomMomName, brideDadName, brideMomName,
+        groomDadDeceased, groomMomDeceased, brideDadDeceased, brideMomDeceased,
+        groomPhoto: safeUrl(groomPhoto),
+        bridePhoto: safeUrl(bridePhoto),
+        basicInfoPreset, basicInfoTitle, groomFirst, hideParents,
+        showContact, groomContact, brideContact,
+        // 예식
+        dateBlockTitle: ceremonyTitle, showDDay,
+        weddingDate, weddingTime,
+        // 장소
+        venueName, venueDetail: hallName, venueAddress: address, lat, lng,
+        // 오시는 길
+        locationTitle, transportInfo,
+        subwayInfo, busInfo, carInfo, walkInfo,
+        // 계좌
+        accountTitle, accountMsg, accountMsgEnabled, accountGroomFirst,
+        groomAccounts, brideAccounts,
+        // 안내사항
+        noticeTitle, noticeItems,
+        // 주변
+        nearbyTitle, nearbySubtitle,
+        nearbyItems: nearbyItems.map(({ id: _id, ...rest }) => ({
+          ...rest, imageUrl: safeUrl(rest.imageUrl ?? '') ?? rest.imageUrl,
+        })),
+        // 갤러리
+        gallery: gallery.filter(url => !url.startsWith('blob:')),
+        galleryLayout,
+        // 메시지
+        msgTitle, messageMaxLen,
+        // 엔딩
+        endingMsg, showPetals,
+      };
+
+      if (isEditMode && editWeddingId) {
+        await api.updateMyWedding(editWeddingId, requestData as any);
+        showToast("✅ 청첩장이 수정되었습니다!");
+        setTimeout(() => navigate(`/manage`), 1000);
+      } else {
+        const result = await api.createMyWedding(requestData as any);
+        const generatedCode = result.code;
+        if (!generatedCode) throw new Error("접속 코드가 없습니다.");
+        showToast("🎉 청첩장이 성공적으로 발행되었습니다!");
+        setTimeout(() => navigate(`/qr/${generatedCode}`), 1000);
+      }
+    } catch (err) {
+      console.error("청첩장 발행 실패:", err);
+      showToast("❌ 서버 저장에 실패했습니다. 로그인을 확인해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const PhonePreview = () => (
@@ -799,8 +982,7 @@ export default function CreatePage() {
                   <div className="rounded-xl overflow-hidden mb-2">
                     <KakaoMap
                       address={address}
-                      markerTitle={markerTitle}
-                      markerIconIdx={markerIconIdx}
+                      markerTitle=""
                       height={110}
                       accentColor={fontColor}
                     />
@@ -985,13 +1167,6 @@ export default function CreatePage() {
                   </motion.div>
                 )}
 
-                {rsvpEnabled && (
-                  <motion.div variants={PREVIEW_SECTION} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 px-3 mb-3 text-center">
-                    <button className="w-full py-2.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: fontColor, color: bgColor }}>
-                      참석 여부 응답하기
-                    </button>
-                  </motion.div>
-                )}
 
                 <motion.div variants={PREVIEW_SECTION} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 px-4 pb-10 text-center overflow-hidden" style={{ minHeight: 80 }}>
                   {showPetals && ["🌸","🌺","🌸","🌷","🌸"].map((p, i) => (
@@ -1041,6 +1216,24 @@ export default function CreatePage() {
           </Link>
           <p className="font-serif text-base text-gray-800 tracking-widest absolute left-1/2 -translate-x-1/2">MomentIn</p>
           <div className="flex items-center gap-2">
+            {kakaoUser ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-600">
+                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: "#3C1E1E" }}>K</span>
+                <span className="hidden sm:inline max-w-[80px] truncate">{kakaoUser}</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  sessionStorage.setItem("momentin_return_url", "/create");
+                  window.location.href = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/auth/kakao`;
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{ backgroundColor: "#FEE500", color: "#191919" }}
+              >
+                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: "#3C1E1E", color: "#FEE500" }}>K</span>
+                <span className="hidden sm:inline">카카오 로그인</span>
+              </button>
+            )}
             <button
               onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors"
@@ -1060,7 +1253,7 @@ export default function CreatePage() {
               className="px-4 py-1.5 rounded-lg text-white text-xs transition-colors disabled:opacity-60"
               style={{ backgroundColor: EDITOR_PINK }}
             >
-              {submitting ? "생성 중..." : "완성하기 →"}
+              {submitting ? (isEditMode ? "저장 중..." : "생성 중...") : (isEditMode ? "수정 저장 →" : "완성하기 →")}
             </button>
           </div>
         </header>
@@ -1630,16 +1823,6 @@ export default function CreatePage() {
                               </div>
                             ))}
                           </div>
-                          <div className="flex flex-col gap-2 pt-2">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="checkbox" checked={showParentContact} onChange={(e) => setShowParentContact(e.target.checked)} className="w-4 h-4 rounded" style={{ accentColor: EDITOR_PINK }} />
-                              <span className="text-sm text-gray-700">연락처 추가</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="checkbox" checked={showTitleEdit} onChange={(e) => setShowTitleEdit(e.target.checked)} className="w-4 h-4 rounded" style={{ accentColor: EDITOR_PINK }} />
-                              <span className="text-sm text-gray-700">호칭 수정</span>
-                            </label>
-                          </div>
                         </SectionBlock>
                       )}
                     </>
@@ -1758,52 +1941,6 @@ export default function CreatePage() {
                         </div>
                       </SectionBlock>
 
-                      {/* 지도 표시 정보 */}
-                      <SectionBlock title="지도 표시 정보">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-2.5">지도 마커 선택</p>
-                          <div className="flex gap-6">
-                            {[{ val: false, label: "기본 마커" }, { val: true, label: "커스텀 마커" }].map(({ val, label }) => (
-                              <button key={label} onClick={() => setUseCustomMarker(val)} className="flex items-center gap-2">
-                                <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
-                                  style={useCustomMarker === val ? { borderColor: EDITOR_PINK } : { borderColor: "#D1D5DB" }}>
-                                  {useCustomMarker === val && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: EDITOR_PINK }} />}
-                                </div>
-                                <span className="text-sm text-gray-700">{label}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {useCustomMarker && (
-                          <>
-                            <div className="flex items-start gap-2 p-3 rounded-xl" style={{ backgroundColor: "#EFF6FF" }}>
-                              <span className="text-blue-400 flex-shrink-0 font-medium text-sm">ℹ</span>
-                              <p className="text-xs text-blue-600">미리보기 위치가 맞지 않을 경우 지도 잠금 해제 후 핀을 드래그하여 원하는 위치로 이동시킬 수 있습니다.</p>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-xs text-gray-500">마커 타이틀 입력</label>
-                              <input className={inputCls} value={markerTitle} onChange={(e) => setMarkerTitle(e.target.value)} placeholder="예) 한지호 ❤ 김지우" />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <label className="text-xs text-gray-500">마커 아이콘 선택</label>
-                              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                                {["🍭","💝","🌸","❤️","🎁","💒","🥂"].map((icon, i) => (
-                                  <button key={i} onClick={() => setMarkerIconIdx(i)}
-                                    className="relative w-16 h-16 rounded-2xl border-2 flex-shrink-0 flex items-center justify-center text-2xl transition-all"
-                                    style={markerIconIdx === i ? { borderColor: "#111", backgroundColor: "#F5F5F5" } : { borderColor: "#E5E7EB", backgroundColor: "white" }}>
-                                    {icon}
-                                    {markerIconIdx === i && (
-                                      <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
-                                        <Check size={10} className="text-white" />
-                                      </div>
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </SectionBlock>
                     </>
                   )}
 

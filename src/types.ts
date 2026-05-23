@@ -1,3 +1,4 @@
+export type View = 'login' | 'create' | 'join' | 'ready' | 'gallery' | 'guest';
 export type MotionType = "zoom-in" | "zoom-out" | "slide-right" | "slide-left" | "slide-up";
 export type ColorPreset = "classic" | "garden" | "ocean" | "forest";
 export type Attendance = "yes" | "no" | "undecided";
@@ -113,38 +114,66 @@ export const COLOR_PRESETS: Record<ColorPreset, Omit<ColorTheme, "preset">> = {
   forest:  { bg: "#ede8e0", text: "#2a2218", accent: "#7a6a4a", button: "#4a3a28", buttonText: "#ffffff" },
 };
 
-
-// 임시!!!!!
-// 임시!!!!!  ← 이 부분을 아래로 교체
-
-export interface Photo {
-  id: string;
-  image_url: string;
-  like_count: number;
-  is_hidden?: boolean;
-  created_at?: string;
-  user?: { display_name: string };
-}
-
-export interface Guestbook {
-  id: string;
-  message: string;
-  is_hidden?: boolean;
-  created_at?: string;
-  user?: { display_name: string };
+export interface UserSummary {
+  display_name: string;
 }
 
 export interface Wedding {
   id: string;
-  wedding_date?: string;
-  wedding_time?: string;
-  location_name?: string;
-  location_address?: string;
-  theme_code?: string;
-  invitation?: Record<string, unknown>;  // unknown → Record<string, unknown>
-  invitation_json?: string;
+  admin_id?: string;
+  theme_code?: string | null;
+  invitation_json?: string | null;
+  invitation?: Record<string, unknown> | null;
+  wedding_date?: string | null;
+  wedding_time?: string | null;
+  location_name?: string | null;
+  location_address?: string | null;
+  view_count?: number;
+  status?: string;
+  created_at?: string;
+  admin?: UserSummary;
   _count?: {
     photos: number;
     guestbooks: number;
+    rsvps?: number;
   };
+}
+
+export interface Rsvp {
+  id: string;
+  wedding_id: string;
+  user_id?: string | null;
+  name: string;
+  attendance: string;
+  guest_count: number;
+  meal_preference?: string | null;
+  message?: string | null;
+  created_at: string;
+}
+
+export interface Photo {
+  id: string;
+  wedding_id: string;
+  user_id: string;
+  image_url: string;
+  like_count: number;
+  is_hidden: boolean;
+  created_at: string;
+  user?: UserSummary;
+}
+
+export interface Guestbook {
+  id: string;
+  wedding_id: string;
+  user_id: string;
+  message: string;
+  is_hidden: boolean;
+  created_at: string;
+  user?: UserSummary;
+}
+
+export interface QrResponse {
+  code: string;
+  wedding: Wedding;
+  data: Record<string, unknown> | null;
 }

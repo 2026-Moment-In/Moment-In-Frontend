@@ -15,7 +15,7 @@ type Invitation = {
 
 function getInvitation(wedding?: Wedding | null): Invitation {
   if (!wedding) return {};
-  if (wedding.invitation) return wedding.invitation as Invitation;
+  if ((wedding as any).invitation) return (wedding as any).invitation as Invitation;
 
   try {
     return wedding.invitation_json ? JSON.parse(wedding.invitation_json) : {};
@@ -28,7 +28,7 @@ function getCode(wedding?: Wedding | null) {
   return wedding?.theme_code ?? wedding?.id ?? "";
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string | null) {
   if (!value) return "날짜 미정";
   return value.slice(0, 10);
 }
@@ -175,7 +175,7 @@ export default function DashboardPage() {
                   className={`admin-wedding-item ${selected?.id === wedding.id ? "active" : ""}`}
                 >
                   <strong>{title}</strong>
-                  <span>{formatDate(wedding.wedding_date)}</span>
+                  <span>{formatDate(wedding.wedding_date ?? undefined)}</span>
                   <small>
                     사진 {wedding._count?.photos ?? 0} · 방명록 {wedding._count?.guestbooks ?? 0}
                   </small>

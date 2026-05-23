@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 function KakaoIcon() {
@@ -13,16 +12,14 @@ function KakaoIcon() {
 }
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-
   const handleKakaoLogin = () => {
-    navigate("/manage");
+    window.location.href = "http://localhost:3000/auth/kakao";
   };
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
       <img
-        src="/images/startscreen.svg"
+        src="/images/background.png"
         alt="background"
         className="absolute inset-0 w-full h-full object-cover"
       />
@@ -36,7 +33,7 @@ export default function LoginPage() {
       >
         <p className="text-charcoal/50 text-sm tracking-wide mb-8">순간을 남기고 기억을 남기는</p>
 
-        <img src="/images/logo.svg" alt="MomentIn Logo" width={180} height={100} />
+        <img src="/images/logo2.png" alt="MomentIn Logo" width={180} height={100} />
 
         <p
           className="font-bold text-[26px] text-[#3C1E1E] tracking-wider mt-4 mb-16"
