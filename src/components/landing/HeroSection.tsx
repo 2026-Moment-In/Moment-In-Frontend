@@ -39,6 +39,12 @@ export default function HeroSection() {
             >
               무료 시안 제작
             </Link>
+            <Link
+              to="/guest"
+              className="px-8 py-4 bg-white border border-divider text-charcoal rounded-full text-sm font-medium hover:bg-surface transition-colors"
+            >
+              청첩장 보기
+            </Link>
           </motion.div>
 
           <motion.div
