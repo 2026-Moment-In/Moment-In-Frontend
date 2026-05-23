@@ -10,7 +10,7 @@ export default function AdminLivePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<{ url: string; likeCount: number }[]>([]);
   const [groomName, setGroomName] = useState("");
   const [brideName, setBrideName] = useState("");
   const [weddingDate, setWeddingDate] = useState("");
@@ -55,7 +55,7 @@ export default function AdminLivePage() {
         setPhotos(
           photoList
             .filter((p) => !p.is_hidden)
-            .map((p) => p.image_url)
+            .map((p) => ({ url: p.image_url, likeCount: p.like_count }))
         );
       } catch (e) {
         console.error(e);
@@ -102,7 +102,7 @@ export default function AdminLivePage() {
     );
   }
 
-  const photoUrl = photos[current];
+  const photoUrl = photos[current]?.url;
 
   return (
     <div
@@ -162,7 +162,7 @@ export default function AdminLivePage() {
         </div>
         <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
           <Heart size={16} className="text-rose-light fill-rose-light" />
-          <span className="text-white font-medium text-sm">{current + 1}</span>
+          <span className="text-white font-medium text-sm">{photos[current]?.likeCount ?? 0}</span>
         </div>
       </motion.div>
 
@@ -200,9 +200,8 @@ export default function AdminLivePage() {
                 setCurrent(i);
                 setShowControls(true);
               }}
-              className={`rounded-full transition-all cursor-pointer ${
-                i === current ? "w-1.5 h-4 bg-white" : "w-1.5 h-1.5 bg-white/40"
-              }`}
+              className={`rounded-full transition-all cursor-pointer ${i === current ? "w-1.5 h-4 bg-white" : "w-1.5 h-1.5 bg-white/40"
+                }`}
             />
           ))}
         </div>
