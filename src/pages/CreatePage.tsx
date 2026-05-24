@@ -15,6 +15,7 @@ import type { CoupleInfo, InvitationCover, ColorTheme, NoticeItem, NearbyItem } 
 import KakaoMap from "../components/common/KakaoMap";
 import { api } from "../api";
 import { loadKakaoMapsSdk } from "../utils/kakaoMapSdk";
+import { getAccessToken, getDisplayNameFromToken } from "../utils/auth";
 
 type TabId =
   | "cover" | "style" | "greeting" | "basicinfo" | "ceremony"
@@ -360,11 +361,14 @@ export default function CreatePage() {
     if (token) {
       localStorage.setItem("momentin_access_token", token);
       setIsLoggedIn(true);
+      setKakaoUser(getDisplayNameFromToken(token));
       window.history.replaceState({}, document.title, window.location.pathname);
       showToast("✅ 카카오 인증 로그인이 완료되었습니다!");
     } else {
-      if (localStorage.getItem("momentin_access_token")) {
+      const storedToken = getAccessToken();
+      if (storedToken) {
         setIsLoggedIn(true);
+        setKakaoUser(getDisplayNameFromToken(storedToken));
       }
     }
   }, []);
@@ -372,18 +376,7 @@ export default function CreatePage() {
   const [activeTab, setActiveTab]           = useState<TabId>("cover");
   const [submitting, setSubmitting]         = useState(false);
   const [saved, setSaved]                   = useState(false);
-  const [kakaoUser, setKakaoUser]           = useState<string | null>(() => {
-    try {
-      const token = localStorage.getItem("momentin_access_token");
-      if (!token) return null;
-      const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-      const json = decodeURIComponent(
-        atob(base64).split("").map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")
-      );
-      const payload = JSON.parse(json);
-      return (payload.displayName as string) ?? null;
-    } catch { return null; }
-  });
+  const [kakaoUser, setKakaoUser]           = useState<string | null>(() => getDisplayNameFromToken());
   const [motionKey, setMotionKey]           = useState(0);
   const [previewMode, setPreviewMode]       = useState<"cover" | "full">("cover");
   const [showMobilePreview, setShowMobilePreview] = useState(false);
@@ -713,37 +706,29 @@ export default function CreatePage() {
 
   const imgFilter = `brightness(${brightness}) contrast(${contrast}) saturate(${saturation}) grayscale(${grayscale})`;
 
-  const handlePublish = async () => {
-    const token = localStorage.getItem("momentin_access_token");
-    if (!token) {
-      sessionStorage.setItem("momentin_return_url", "/create");
-      window.location.href = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/auth/kakao`;
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const transportInfo: Record<string, string> = {};
-      if (subwayInfo.trim()) transportInfo['지하철'] = subwayInfo.trim();
-      if (busInfo.trim())    transportInfo['버스']   = busInfo.trim();
-      if (carInfo.trim())    transportInfo['자가용'] = carInfo.trim();
-      if (walkInfo.trim())   transportInfo['도보']   = walkInfo.trim();
+  const buildInvitationPayload = () => {
+    const transportInfo: Record<string, string> = {};
+    if (subwayInfo.trim()) transportInfo["지하철"] = subwayInfo.trim();
+    if (busInfo.trim()) transportInfo["버스"] = busInfo.trim();
+    if (carInfo.trim()) transportInfo["자가용"] = carInfo.trim();
+    if (walkInfo.trim()) transportInfo["도보"] = walkInfo.trim();
 
-      const safeUrl = (url: string) => (url && !url.startsWith('blob:') ? url : null);
+    const safeUrl = (url: string) => (url && !url.startsWith("blob:") ? url : null);
 
-      const requestData = {
+    return {
         // 스타일
         bgColor, fontColor, fontFamily, bgTexture,
         // 커버
-        coverImage:   safeUrl(coverImage),
-        coverImage2:  safeUrl(coverImage2),
-        coverLayout,  motionType,
+        coverImage: safeUrl(coverImage),
+        coverImage2: safeUrl(coverImage2),
+        coverLayout, motionType,
         showGradient, gradientDir, gradientTone,
         coverTextColor, showCountdown,
         brightness, contrast, saturation, grayscale,
         // 인사말
         greetingTitle, greetingBody: greetingMsg,
         greetingPhoto: safeUrl(greetingPhoto),
-        greetingAnim,  greetingBgPos,
+        greetingAnim, greetingBgPos,
         // 기본 정보
         groomName,  brideName,
         groomRelation, brideRelation,
@@ -770,16 +755,56 @@ export default function CreatePage() {
         // 주변
         nearbyTitle, nearbySubtitle,
         nearbyItems: nearbyItems.map(({ id: _id, ...rest }) => ({
-          ...rest, imageUrl: safeUrl(rest.imageUrl ?? '') ?? rest.imageUrl,
+          ...rest, imageUrl: safeUrl(rest.imageUrl ?? "") ?? rest.imageUrl,
         })),
         // 갤러리
-        gallery: gallery.filter(url => !url.startsWith('blob:')),
+        gallery: gallery.filter((url) => !url.startsWith("blob:")),
         galleryLayout,
         // 메시지
         msgTitle, messageMaxLen,
         // 엔딩
         endingMsg, showPetals,
-      };
+    };
+  };
+
+  const requireLoginForSave = () => {
+    if (getAccessToken()) return true;
+
+    sessionStorage.setItem("momentin_return_url", window.location.pathname + window.location.search);
+    window.location.href = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/auth/kakao`;
+    return false;
+  };
+
+  const handleSaveDraft = async () => {
+    if (!requireLoginForSave()) return;
+
+    setSubmitting(true);
+    try {
+      const requestData = buildInvitationPayload();
+      if (isEditMode && editWeddingId) {
+        await api.updateMyWedding(editWeddingId, requestData as any);
+      } else {
+        const result = await api.createMyWedding(requestData as any);
+        navigate(`/create?weddingId=${result.wedding.id}`, { replace: true });
+      }
+
+      setSaved(true);
+      showToast("✅ 시안이 DB에 저장되었습니다.");
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("시안 저장 실패:", err);
+      showToast("❌ 시안 저장에 실패했습니다. 로그인을 확인해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!requireLoginForSave()) return;
+
+    setSubmitting(true);
+    try {
+      const requestData = buildInvitationPayload();
 
       if (isEditMode && editWeddingId) {
         await api.updateMyWedding(editWeddingId, requestData as any);
@@ -1317,7 +1342,7 @@ export default function CreatePage() {
             ) : (
               <button
                 onClick={() => {
-                  sessionStorage.setItem("momentin_return_url", "/create");
+                  sessionStorage.setItem("momentin_return_url", window.location.pathname + window.location.search);
                   window.location.href = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/auth/kakao`;
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
@@ -1328,7 +1353,8 @@ export default function CreatePage() {
               </button>
             )}
             <button
-              onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}
+              onClick={handleSaveDraft}
+              disabled={submitting}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors"
             >
               {saved ? <Check size={11} className="text-green-500" /> : <Save size={11} />}

@@ -2,16 +2,34 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { clearAuth, getDisplayNameFromToken } from "../../utils/auth";
 
 export default function NavBar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [displayName, setDisplayName] = useState<string | null>(() => getDisplayNameFromToken());
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const syncAuth = () => setDisplayName(getDisplayNameFromToken());
+    window.addEventListener("storage", syncAuth);
+    window.addEventListener("focus", syncAuth);
+    return () => {
+      window.removeEventListener("storage", syncAuth);
+      window.removeEventListener("focus", syncAuth);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    clearAuth();
+    setDisplayName(null);
+    setMenuOpen(false);
+  };
 
   return (
     <>
@@ -26,12 +44,22 @@ export default function NavBar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/login"
-              className="text-sm text-secondary hover:text-charcoal transition-colors px-4 py-2"
-            >
-              로그인
-            </Link>
+            {displayName ? (
+              <button
+                onClick={handleLogout}
+                className="text-sm text-secondary hover:text-charcoal transition-colors px-4 py-2 max-w-[140px] truncate"
+                title={`${displayName}님 로그아웃`}
+              >
+                {displayName}님
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="text-sm text-secondary hover:text-charcoal transition-colors px-4 py-2"
+              >
+                로그인
+              </Link>
+            )}
             <Link
               to="/create"
               className="text-sm bg-charcoal text-white px-5 py-2 rounded-full hover:bg-charcoal-dark transition-colors"
@@ -59,9 +87,15 @@ export default function NavBar() {
             className="fixed top-16 left-0 right-0 z-40 bg-white shadow-lg border-t border-surface md:hidden"
           >
             <div className="flex flex-col p-4 gap-2">
-              <Link to="/login" onClick={() => setMenuOpen(false)} className="py-3 px-4 text-sm text-secondary text-center">
-                로그인
-              </Link>
+              {displayName ? (
+                <button onClick={handleLogout} className="py-3 px-4 text-sm text-secondary text-center">
+                  {displayName}님 로그아웃
+                </button>
+              ) : (
+                <Link to="/login" onClick={() => setMenuOpen(false)} className="py-3 px-4 text-sm text-secondary text-center">
+                  로그인
+                </Link>
+              )}
               <Link
                 to="/create"
                 onClick={() => setMenuOpen(false)}
