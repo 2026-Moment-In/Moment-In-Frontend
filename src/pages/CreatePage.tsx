@@ -31,7 +31,7 @@ type GalleryLayout = "grid" | "slideshow";
 type AnimVal = { scale?: number; x?: string | number; y?: string | number };
 interface Account     { bank: string; holder: string; number: string; relation: string; }
 interface LocalMessage{ id: string; name: string; content: string; likes: number; createdAt: string; }
-interface VenueRecommendation {
+interface NearbyRecommendation {
   id: string;
   placeName: string;
   addressName: string;
@@ -454,11 +454,10 @@ export default function CreatePage() {
   const [carInfo, setCarInfo]               = useState("강남 방면: 남산 1호 터널 → 을지로 → 시청");
   const [walkInfo, setWalkInfo]             = useState("");
   const [transportTab, setTransportTab]     = useState<TransportTab>("subway");
-  const [venueSearchArea, setVenueSearchArea] = useState("");
-  const [venueRecommendCount, setVenueRecommendCount] = useState(5);
-  const [venueRecommendations, setVenueRecommendations] = useState<VenueRecommendation[]>([]);
-  const [venueRecommendLoading, setVenueRecommendLoading] = useState(false);
-  const [selectedVenueId, setSelectedVenueId] = useState("");
+  const [nearbyRecommendCount, setNearbyRecommendCount] = useState(6);
+  const [nearbyRecommendations, setNearbyRecommendations] = useState<NearbyRecommendation[]>([]);
+  const [nearbyRecommendLoading, setNearbyRecommendLoading] = useState(false);
+  const [selectedNearbyIds, setSelectedNearbyIds] = useState<string[]>([]);
 
   const [groomAccounts, setGroomAccounts]   = useState<Account[]>([{ bank: "국민은행", holder: "이준호", number: "123-456-789012", relation: "신랑" }]);
   const [brideAccounts, setBrideAccounts]   = useState<Account[]>([{ bank: "신한은행", holder: "박서연", number: "110-123-456789", relation: "신부" }]);
@@ -518,81 +517,135 @@ export default function CreatePage() {
     const f = e.target.files?.[0]; if (f) setGreetingPhoto(fileToUrl(f)); e.target.value = "";
   };
 
-  const searchVenueKeyword = (keyword: string) =>
-    new Promise<VenueRecommendation[]>((resolve, reject) => {
+  const normalizeNearbyPlace = (place: any): NearbyRecommendation => ({
+    id: place.id,
+    placeName: place.place_name,
+    addressName: place.address_name,
+    roadAddressName: place.road_address_name,
+    phone: place.phone,
+    categoryName: place.category_name,
+    x: place.x,
+    y: place.y,
+  });
+
+  const resolveVenueCoords = () =>
+    new Promise<any>((resolve, reject) => {
+      const geocoder = new window.kakao.maps.services.Geocoder();
+      const query = address.trim();
+
+      if (query) {
+        geocoder.addressSearch(query, (result: any[], status: string) => {
+          if (status === window.kakao.maps.services.Status.OK && result[0]) {
+            resolve(new window.kakao.maps.LatLng(Number(result[0].y), Number(result[0].x)));
+            return;
+          }
+
+          reject(new Error("address geocode failed"));
+        });
+        return;
+      }
+
+      reject(new Error("empty address"));
+    }).catch(
+      () =>
+        new Promise<any>((resolve, reject) => {
+          const keyword = venueName.trim();
+          if (!keyword) {
+            reject(new Error("empty venue"));
+            return;
+          }
+
+          const places = new window.kakao.maps.services.Places();
+          places.keywordSearch(keyword, (data: any[], status: string) => {
+            if (status === window.kakao.maps.services.Status.OK && data[0]) {
+              resolve(new window.kakao.maps.LatLng(Number(data[0].y), Number(data[0].x)));
+              return;
+            }
+
+            reject(new Error("venue search failed"));
+          });
+        }),
+    );
+
+  const searchNearbyKeyword = (keyword: string, location: any) =>
+    new Promise<NearbyRecommendation[]>((resolve, reject) => {
       const places = new window.kakao.maps.services.Places();
-      places.keywordSearch(keyword, (data: any[], status: string) => {
-        if (status === window.kakao.maps.services.Status.OK) {
-          resolve(data.map((place) => ({
-            id: place.id,
-            placeName: place.place_name,
-            addressName: place.address_name,
-            roadAddressName: place.road_address_name,
-            phone: place.phone,
-            categoryName: place.category_name,
-            x: place.x,
-            y: place.y,
-          })));
-          return;
-        }
+      places.keywordSearch(
+        keyword,
+        (data: any[], status: string) => {
+          if (status === window.kakao.maps.services.Status.OK) {
+            resolve(data.map(normalizeNearbyPlace));
+            return;
+          }
 
-        if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
-          resolve([]);
-          return;
-        }
+          if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
+            resolve([]);
+            return;
+          }
 
-        reject(new Error("place search failed"));
-      });
+          reject(new Error("nearby place search failed"));
+        },
+        {
+          location,
+          radius: 1200,
+          sort: window.kakao.maps.services.SortBy.DISTANCE,
+        },
+      );
     });
 
-  const handleRecommendVenues = async () => {
-    const area = venueSearchArea.trim();
-    if (!area) {
-      showToast("지역 또는 식장 위치를 입력해 주세요.");
+  const handleRecommendNearby = async () => {
+    if (!address.trim() && !venueName.trim()) {
+      showToast("먼저 예식장 주소나 장소명을 입력해 주세요.");
       return;
     }
 
-    setVenueRecommendLoading(true);
+    setNearbyRecommendLoading(true);
     try {
       await loadKakaoMapsSdk();
-      const keywords = [`${area} 웨딩홀`, `${area} 예식장`, `${area} 호텔 웨딩`, `${area} 컨벤션 웨딩`];
-      const results = (await Promise.all(keywords.map(searchVenueKeyword))).flat();
+      const location = await resolveVenueCoords();
+      const keywords = ["카페", "공원", "맛집", "편의점", "주차장", "포토스팟"];
+      const results = (await Promise.all(keywords.map((keyword) => searchNearbyKeyword(keyword, location)))).flat();
       const unique = Array.from(new Map(results.map((place) => [place.id, place])).values());
-      const weddingFirst = unique.sort((a, b) => {
-        const aScore = /웨딩|예식|컨벤션|호텔|뷔페/.test(`${a.placeName} ${a.categoryName}`) ? 0 : 1;
-        const bScore = /웨딩|예식|컨벤션|호텔|뷔페/.test(`${b.placeName} ${b.categoryName}`) ? 0 : 1;
-        return aScore - bScore;
-      });
 
-      setVenueRecommendations(weddingFirst.slice(0, venueRecommendCount));
-      setSelectedVenueId("");
-      if (weddingFirst.length === 0) showToast("추천할 장소를 찾지 못했습니다.");
+      setNearbyRecommendations(unique.slice(0, nearbyRecommendCount));
+      setSelectedNearbyIds([]);
+      if (unique.length === 0) showToast("주변 추천 장소를 찾지 못했습니다.");
     } catch {
-      showToast("장소 추천을 불러오지 못했습니다.");
+      showToast("주변 장소 추천을 불러오지 못했습니다.");
     } finally {
-      setVenueRecommendLoading(false);
+      setNearbyRecommendLoading(false);
     }
   };
 
-  const handleSelectRecommendedVenue = (place: VenueRecommendation) => {
-    const nextAddress = place.roadAddressName || place.addressName;
-    setSelectedVenueId(place.id);
-    setVenueName(place.placeName);
-    setAddress(nextAddress);
-    setLat(place.y);
-    setLng(place.x);
-    showToast("선택한 장소로 지도를 이동했어요.");
+  const handleToggleRecommendedNearby = (placeId: string) => {
+    setSelectedNearbyIds((ids) =>
+      ids.includes(placeId) ? ids.filter((id) => id !== placeId) : [...ids, placeId],
+    );
   };
 
-  const handleConfirmRecommendedVenue = () => {
-    if (!selectedVenueId) {
+  const handleConfirmRecommendedNearby = () => {
+    if (selectedNearbyIds.length === 0) {
       showToast("먼저 원하는 장소를 선택해 주세요.");
       return;
     }
 
-    setVenueRecommendations([]);
-    setVenueSearchArea("");
-    showToast("예식 장소가 추가되었습니다.");
+    const selected = nearbyRecommendations.filter((place) => selectedNearbyIds.includes(place.id));
+    setNearbyItems((items) => [
+      ...items,
+      ...selected.map((place) => {
+        const category = place.categoryName.split(">").map((part) => part.trim()).filter(Boolean).pop();
+        const placeAddress = place.roadAddressName || place.addressName;
+        return {
+          id: `nb${place.id}`,
+          title: place.placeName,
+          desc: [category, placeAddress, place.phone].filter(Boolean).join(" · "),
+          imageUrl: "",
+        };
+      }),
+    ]);
+    setNearbyRecommendations([]);
+    setSelectedNearbyIds([]);
+    showToast("선택한 주변 장소를 추가했습니다.");
   };
 
   // 수정 모드: 기존 청첩장 데이터 로드
@@ -1992,87 +2045,6 @@ export default function CreatePage() {
                         </div>
                       </SectionBlock>
 
-                      <SectionBlock title="AI 식장 추천">
-                        <div className="flex flex-col gap-3">
-                          <div className="grid grid-cols-[1fr_92px] gap-2">
-                            <div className="flex flex-col gap-1.5 min-w-0">
-                              <label className="text-xs text-gray-500">지역 또는 식장 위치</label>
-                              <input
-                                className={inputCls}
-                                value={venueSearchArea}
-                                onChange={(e) => setVenueSearchArea(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleRecommendVenues();
-                                }}
-                                placeholder="예: 강남, 성수, 서울 중구"
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-xs text-gray-500">추천 개수</label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                className={inputCls}
-                                value={venueRecommendCount}
-                                onChange={(e) => setVenueRecommendCount(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
-                              />
-                            </div>
-                          </div>
-                          <button
-                            onClick={handleRecommendVenues}
-                            disabled={venueRecommendLoading}
-                            className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium disabled:opacity-60 transition-colors"
-                          >
-                            {venueRecommendLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                            {venueRecommendLoading ? "추천 찾는 중" : "AI 추천 받기"}
-                          </button>
-
-                          {venueRecommendations.length > 0 && (
-                            <div className="flex flex-col gap-2">
-                              {venueRecommendations.map((place) => {
-                                const isSelected = selectedVenueId === place.id;
-                                const nextAddress = place.roadAddressName || place.addressName;
-                                return (
-                                  <button
-                                    key={place.id}
-                                    onClick={() => handleSelectRecommendedVenue(place)}
-                                    className="text-left p-3 rounded-xl border transition-all bg-white"
-                                    style={isSelected
-                                      ? { borderColor: EDITOR_PINK, backgroundColor: EDITOR_PINK_BG }
-                                      : { borderColor: "#E5E7EB" }}
-                                  >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-gray-800 truncate">{place.placeName}</p>
-                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{nextAddress}</p>
-                                        {place.phone && <p className="text-[11px] text-gray-400 mt-1">{place.phone}</p>}
-                                      </div>
-                                      <span
-                                        className="px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap"
-                                        style={isSelected
-                                          ? { backgroundColor: EDITOR_PINK, color: "#fff" }
-                                          : { backgroundColor: "#F3F4F6", color: "#6B7280" }}
-                                      >
-                                        {isSelected ? "선택됨" : "선택"}
-                                      </span>
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                              <button
-                                onClick={handleConfirmRecommendedVenue}
-                                className="flex items-center justify-center gap-2 py-3 rounded-xl text-white text-sm font-medium transition-colors"
-                                style={{ backgroundColor: EDITOR_PINK }}
-                              >
-                                <Check size={16} />
-                                선택한 장소 추가
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </SectionBlock>
-
                       {/* 예식 기본정보 */}
                       <SectionBlock title="예식 기본정보">
                         <div className="grid grid-cols-2 gap-3">
@@ -2437,6 +2409,85 @@ export default function CreatePage() {
                             <label className="text-xs text-gray-500">소개 문구</label>
                             <textarea className={`${inputCls} resize-none`} rows={2} value={nearbySubtitle} onChange={(e) => setNearbySubtitle(e.target.value)} placeholder="예식 후 함께 즐길 수 있는 곳을 소개해요" />
                           </div>
+                        </div>
+                      </SectionBlock>
+
+                      <SectionBlock title="AI 주변 편의시설 추천">
+                        <div className="flex flex-col gap-3">
+                          <div className="grid grid-cols-[1fr_92px] gap-2">
+                            <div className="flex flex-col gap-1.5 min-w-0">
+                              <label className="text-xs text-gray-500">추천 기준</label>
+                              <input
+                                className={inputCls}
+                                value={address || venueName}
+                                readOnly
+                                placeholder="오시는길에서 식장 주소를 먼저 입력해 주세요"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-xs text-gray-500">추천 개수</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={12}
+                                className={inputCls}
+                                value={nearbyRecommendCount}
+                                onChange={(e) => setNearbyRecommendCount(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
+                              />
+                            </div>
+                          </div>
+                          <button
+                            onClick={handleRecommendNearby}
+                            disabled={nearbyRecommendLoading}
+                            className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium disabled:opacity-60 transition-colors"
+                          >
+                            {nearbyRecommendLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                            {nearbyRecommendLoading ? "주변 찾는 중" : "주변 편의시설 추천 받기"}
+                          </button>
+
+                          {nearbyRecommendations.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {nearbyRecommendations.map((place) => {
+                                const isSelected = selectedNearbyIds.includes(place.id);
+                                const placeAddress = place.roadAddressName || place.addressName;
+                                const category = place.categoryName.split(">").map((part) => part.trim()).filter(Boolean).pop();
+                                return (
+                                  <button
+                                    key={place.id}
+                                    onClick={() => handleToggleRecommendedNearby(place.id)}
+                                    className="text-left p-3 rounded-xl border transition-all bg-white"
+                                    style={isSelected
+                                      ? { borderColor: EDITOR_PINK, backgroundColor: EDITOR_PINK_BG }
+                                      : { borderColor: "#E5E7EB" }}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-800 truncate">{place.placeName}</p>
+                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{[category, placeAddress].filter(Boolean).join(" · ")}</p>
+                                        {place.phone && <p className="text-[11px] text-gray-400 mt-1">{place.phone}</p>}
+                                      </div>
+                                      <span
+                                        className="px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap"
+                                        style={isSelected
+                                          ? { backgroundColor: EDITOR_PINK, color: "#fff" }
+                                          : { backgroundColor: "#F3F4F6", color: "#6B7280" }}
+                                      >
+                                        {isSelected ? "선택됨" : "선택"}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                              <button
+                                onClick={handleConfirmRecommendedNearby}
+                                className="flex items-center justify-center gap-2 py-3 rounded-xl text-white text-sm font-medium transition-colors"
+                                style={{ backgroundColor: EDITOR_PINK }}
+                              >
+                                <Check size={16} />
+                                선택한 장소 추가
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </SectionBlock>
 
