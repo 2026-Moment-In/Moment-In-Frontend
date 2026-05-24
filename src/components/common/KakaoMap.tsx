@@ -1,49 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
+import { loadKakaoMapsSdk } from "../../utils/kakaoMapSdk";
 
-declare global {
-  interface Window { kakao: any; }
-}
-
-const APP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY as string;
 const MARKER_ICONS = ["🍭", "💝", "🌸", "❤️", "🎁", "💒", "🥂"];
-
-function loadKakaoSDK(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("timeout")), 10000);
-    const done = () => { clearTimeout(timer); resolve(); };
-
-    // services까지 포함해 완전히 초기화됐으면 즉시 반환
-    if (window.kakao?.maps?.services?.Geocoder) {
-      done();
-      return;
-    }
-
-    const runLoad = () => {
-      window.kakao.maps.load(() => done());
-    };
-
-    // 스크립트 태그가 이미 삽입된 경우 — kakao.maps.load 등장을 폴링
-    if (document.getElementById("kakao-maps-sdk")) {
-      if (window.kakao?.maps?.load) {
-        runLoad();
-      } else {
-        const wait = setInterval(() => {
-          if (window.kakao?.maps?.load) { clearInterval(wait); runLoad(); }
-        }, 50);
-      }
-      return;
-    }
-
-    // 최초 삽입 — autoload=false 로 스크립트 로드 후 kakao.maps.load() 호출
-    const script = document.createElement("script");
-    script.id = "kakao-maps-sdk";
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${APP_KEY}&libraries=services&autoload=false`;
-    script.onload = runLoad;
-    script.onerror = () => { clearTimeout(timer); reject(new Error("script load failed")); };
-    document.head.appendChild(script);
-  });
-}
 
 interface Props {
   address: string;
@@ -75,7 +34,7 @@ export default function KakaoMap({
     containerRef.current.innerHTML = "";
     setStatus("loading");
 
-    loadKakaoSDK()
+    loadKakaoMapsSdk()
       .then(() => {
         if (cancelled || !containerRef.current) return;
 
@@ -88,8 +47,7 @@ export default function KakaoMap({
             return;
           }
 
-          const coords = new window.kakao.maps.LatLng(+result[0].y, +result[0].x);
-
+          const coords = new window.kakao.maps.LatLng(Number(result[0].y), Number(result[0].x));
           const map = new window.kakao.maps.Map(containerRef.current, {
             center: coords,
             level: 3,
@@ -118,7 +76,9 @@ export default function KakaoMap({
         if (!cancelled) setStatus("error");
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [address, markerTitle, markerIconIdx]);
 
   return (

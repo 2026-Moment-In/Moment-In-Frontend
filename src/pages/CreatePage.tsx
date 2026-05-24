@@ -6,7 +6,7 @@ import {
   Copy, ChevronDown, ChevronUp, Trash2, MapPin,
   RotateCcw, Image as ImageIcon, Palette, Mail, Users,
   CalendarDays, CreditCard, Info, MessageCircle, Grid, Sparkles,
-  Crop, Compass,
+  Crop, Compass, Search, Loader2,
 } from "lucide-react";
 import type { MotionType } from "../types";
 import { DEMO_COVER_IMAGES } from "../demo";
@@ -14,6 +14,7 @@ import { useInviteStore } from "../store/inviteStore";
 import type { CoupleInfo, InvitationCover, ColorTheme, NoticeItem, NearbyItem } from "../types";
 import KakaoMap from "../components/common/KakaoMap";
 import { api } from "../api";
+import { loadKakaoMapsSdk } from "../utils/kakaoMapSdk";
 
 type TabId =
   | "cover" | "style" | "greeting" | "basicinfo" | "ceremony"
@@ -29,6 +30,16 @@ type GalleryLayout = "grid" | "slideshow";
 type AnimVal = { scale?: number; x?: string | number; y?: string | number };
 interface Account     { bank: string; holder: string; number: string; relation: string; }
 interface LocalMessage{ id: string; name: string; content: string; likes: number; createdAt: string; }
+interface VenueRecommendation {
+  id: string;
+  placeName: string;
+  addressName: string;
+  roadAddressName: string;
+  phone: string;
+  categoryName: string;
+  x: string;
+  y: string;
+}
 
 const EDITOR_PINK = "#F4768A";
 const EDITOR_PINK_BG = "#FFF0F2";
@@ -450,6 +461,11 @@ export default function CreatePage() {
   const [carInfo, setCarInfo]               = useState("강남 방면: 남산 1호 터널 → 을지로 → 시청");
   const [walkInfo, setWalkInfo]             = useState("");
   const [transportTab, setTransportTab]     = useState<TransportTab>("subway");
+  const [venueSearchArea, setVenueSearchArea] = useState("");
+  const [venueRecommendCount, setVenueRecommendCount] = useState(5);
+  const [venueRecommendations, setVenueRecommendations] = useState<VenueRecommendation[]>([]);
+  const [venueRecommendLoading, setVenueRecommendLoading] = useState(false);
+  const [selectedVenueId, setSelectedVenueId] = useState("");
 
   const [groomAccounts, setGroomAccounts]   = useState<Account[]>([{ bank: "국민은행", holder: "이준호", number: "123-456-789012", relation: "신랑" }]);
   const [brideAccounts, setBrideAccounts]   = useState<Account[]>([{ bank: "신한은행", holder: "박서연", number: "110-123-456789", relation: "신부" }]);
@@ -507,6 +523,83 @@ export default function CreatePage() {
   };
   const handleGreetingPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (f) setGreetingPhoto(fileToUrl(f)); e.target.value = "";
+  };
+
+  const searchVenueKeyword = (keyword: string) =>
+    new Promise<VenueRecommendation[]>((resolve, reject) => {
+      const places = new window.kakao.maps.services.Places();
+      places.keywordSearch(keyword, (data: any[], status: string) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          resolve(data.map((place) => ({
+            id: place.id,
+            placeName: place.place_name,
+            addressName: place.address_name,
+            roadAddressName: place.road_address_name,
+            phone: place.phone,
+            categoryName: place.category_name,
+            x: place.x,
+            y: place.y,
+          })));
+          return;
+        }
+
+        if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
+          resolve([]);
+          return;
+        }
+
+        reject(new Error("place search failed"));
+      });
+    });
+
+  const handleRecommendVenues = async () => {
+    const area = venueSearchArea.trim();
+    if (!area) {
+      showToast("지역 또는 식장 위치를 입력해 주세요.");
+      return;
+    }
+
+    setVenueRecommendLoading(true);
+    try {
+      await loadKakaoMapsSdk();
+      const keywords = [`${area} 웨딩홀`, `${area} 예식장`, `${area} 호텔 웨딩`, `${area} 컨벤션 웨딩`];
+      const results = (await Promise.all(keywords.map(searchVenueKeyword))).flat();
+      const unique = Array.from(new Map(results.map((place) => [place.id, place])).values());
+      const weddingFirst = unique.sort((a, b) => {
+        const aScore = /웨딩|예식|컨벤션|호텔|뷔페/.test(`${a.placeName} ${a.categoryName}`) ? 0 : 1;
+        const bScore = /웨딩|예식|컨벤션|호텔|뷔페/.test(`${b.placeName} ${b.categoryName}`) ? 0 : 1;
+        return aScore - bScore;
+      });
+
+      setVenueRecommendations(weddingFirst.slice(0, venueRecommendCount));
+      setSelectedVenueId("");
+      if (weddingFirst.length === 0) showToast("추천할 장소를 찾지 못했습니다.");
+    } catch {
+      showToast("장소 추천을 불러오지 못했습니다.");
+    } finally {
+      setVenueRecommendLoading(false);
+    }
+  };
+
+  const handleSelectRecommendedVenue = (place: VenueRecommendation) => {
+    const nextAddress = place.roadAddressName || place.addressName;
+    setSelectedVenueId(place.id);
+    setVenueName(place.placeName);
+    setAddress(nextAddress);
+    setLat(place.y);
+    setLng(place.x);
+    showToast("선택한 장소로 지도를 이동했어요.");
+  };
+
+  const handleConfirmRecommendedVenue = () => {
+    if (!selectedVenueId) {
+      showToast("먼저 원하는 장소를 선택해 주세요.");
+      return;
+    }
+
+    setVenueRecommendations([]);
+    setVenueSearchArea("");
+    showToast("예식 장소가 추가되었습니다.");
   };
 
   // 수정 모드: 기존 청첩장 데이터 로드
@@ -1870,6 +1963,87 @@ export default function CreatePage() {
                         <div className="flex flex-col gap-1">
                           <label className="text-xs text-gray-500">블록 제목</label>
                           <input className={inputCls} value={locationTitle} onChange={(e) => setLocationTitle(e.target.value)} />
+                        </div>
+                      </SectionBlock>
+
+                      <SectionBlock title="AI 식장 추천">
+                        <div className="flex flex-col gap-3">
+                          <div className="grid grid-cols-[1fr_92px] gap-2">
+                            <div className="flex flex-col gap-1.5 min-w-0">
+                              <label className="text-xs text-gray-500">지역 또는 식장 위치</label>
+                              <input
+                                className={inputCls}
+                                value={venueSearchArea}
+                                onChange={(e) => setVenueSearchArea(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleRecommendVenues();
+                                }}
+                                placeholder="예: 강남, 성수, 서울 중구"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-xs text-gray-500">추천 개수</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={10}
+                                className={inputCls}
+                                value={venueRecommendCount}
+                                onChange={(e) => setVenueRecommendCount(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                              />
+                            </div>
+                          </div>
+                          <button
+                            onClick={handleRecommendVenues}
+                            disabled={venueRecommendLoading}
+                            className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 text-white text-sm font-medium disabled:opacity-60 transition-colors"
+                          >
+                            {venueRecommendLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                            {venueRecommendLoading ? "추천 찾는 중" : "AI 추천 받기"}
+                          </button>
+
+                          {venueRecommendations.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {venueRecommendations.map((place) => {
+                                const isSelected = selectedVenueId === place.id;
+                                const nextAddress = place.roadAddressName || place.addressName;
+                                return (
+                                  <button
+                                    key={place.id}
+                                    onClick={() => handleSelectRecommendedVenue(place)}
+                                    className="text-left p-3 rounded-xl border transition-all bg-white"
+                                    style={isSelected
+                                      ? { borderColor: EDITOR_PINK, backgroundColor: EDITOR_PINK_BG }
+                                      : { borderColor: "#E5E7EB" }}
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-800 truncate">{place.placeName}</p>
+                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{nextAddress}</p>
+                                        {place.phone && <p className="text-[11px] text-gray-400 mt-1">{place.phone}</p>}
+                                      </div>
+                                      <span
+                                        className="px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap"
+                                        style={isSelected
+                                          ? { backgroundColor: EDITOR_PINK, color: "#fff" }
+                                          : { backgroundColor: "#F3F4F6", color: "#6B7280" }}
+                                      >
+                                        {isSelected ? "선택됨" : "선택"}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                              <button
+                                onClick={handleConfirmRecommendedVenue}
+                                className="flex items-center justify-center gap-2 py-3 rounded-xl text-white text-sm font-medium transition-colors"
+                                style={{ backgroundColor: EDITOR_PINK }}
+                              >
+                                <Check size={16} />
+                                선택한 장소 추가
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </SectionBlock>
 
