@@ -38,6 +38,7 @@ interface NearbyRecommendation {
   roadAddressName: string;
   phone: string;
   categoryName: string;
+  recommendationType: string;
   x: string;
   y: string;
 }
@@ -517,13 +518,14 @@ export default function CreatePage() {
     const f = e.target.files?.[0]; if (f) setGreetingPhoto(fileToUrl(f)); e.target.value = "";
   };
 
-  const normalizeNearbyPlace = (place: any): NearbyRecommendation => ({
+  const normalizeNearbyPlace = (place: any, recommendationType: string): NearbyRecommendation => ({
     id: place.id,
     placeName: place.place_name,
     addressName: place.address_name,
     roadAddressName: place.road_address_name,
     phone: place.phone,
     categoryName: place.category_name,
+    recommendationType,
     x: place.x,
     y: place.y,
   });
@@ -567,14 +569,14 @@ export default function CreatePage() {
         }),
     );
 
-  const searchNearbyKeyword = (keyword: string, location: any) =>
+  const searchNearbyKeyword = (keyword: string, label: string, location: any) =>
     new Promise<NearbyRecommendation[]>((resolve, reject) => {
       const places = new window.kakao.maps.services.Places();
       places.keywordSearch(
         keyword,
         (data: any[], status: string) => {
           if (status === window.kakao.maps.services.Status.OK) {
-            resolve(data.map(normalizeNearbyPlace));
+            resolve(data.map((place) => normalizeNearbyPlace(place, label)));
             return;
           }
 
@@ -603,13 +605,34 @@ export default function CreatePage() {
     try {
       await loadKakaoMapsSdk();
       const location = await resolveVenueCoords();
-      const keywords = ["카페", "공원", "맛집", "편의점", "주차장", "포토스팟"];
-      const results = (await Promise.all(keywords.map((keyword) => searchNearbyKeyword(keyword, location)))).flat();
-      const unique = Array.from(new Map(results.map((place) => [place.id, place])).values());
+      const groups = [
+        { label: "카페", keyword: "카페" },
+        { label: "편의점", keyword: "편의점" },
+        { label: "공원", keyword: "공원" },
+        { label: "음식점", keyword: "맛집" },
+        { label: "주차장", keyword: "주차장" },
+        { label: "포토스팟", keyword: "포토스팟" },
+      ];
+      const resultsByGroup = await Promise.all(
+        groups.map((group) => searchNearbyKeyword(group.keyword, group.label, location)),
+      );
+      const picked: NearbyRecommendation[] = [];
+      const seen = new Set<string>();
+      const maxRows = Math.max(...resultsByGroup.map((results) => results.length), 0);
 
-      setNearbyRecommendations(unique.slice(0, nearbyRecommendCount));
+      for (let row = 0; row < maxRows && picked.length < nearbyRecommendCount; row += 1) {
+        for (const results of resultsByGroup) {
+          const place = results[row];
+          if (!place || seen.has(place.id)) continue;
+          seen.add(place.id);
+          picked.push(place);
+          if (picked.length >= nearbyRecommendCount) break;
+        }
+      }
+
+      setNearbyRecommendations(picked);
       setSelectedNearbyIds([]);
-      if (unique.length === 0) showToast("주변 추천 장소를 찾지 못했습니다.");
+      if (picked.length === 0) showToast("주변 추천 장소를 찾지 못했습니다.");
     } catch {
       showToast("주변 장소 추천을 불러오지 못했습니다.");
     } finally {
@@ -633,12 +656,11 @@ export default function CreatePage() {
     setNearbyItems((items) => [
       ...items,
       ...selected.map((place) => {
-        const category = place.categoryName.split(">").map((part) => part.trim()).filter(Boolean).pop();
         const placeAddress = place.roadAddressName || place.addressName;
         return {
           id: `nb${place.id}`,
           title: place.placeName,
-          desc: [category, placeAddress, place.phone].filter(Boolean).join(" · "),
+          desc: [place.recommendationType, placeAddress, place.phone].filter(Boolean).join(" · "),
           imageUrl: "",
         };
       }),
@@ -2463,7 +2485,7 @@ export default function CreatePage() {
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="min-w-0">
                                         <p className="text-sm font-semibold text-gray-800 truncate">{place.placeName}</p>
-                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{[category, placeAddress].filter(Boolean).join(" · ")}</p>
+                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{[place.recommendationType, category, placeAddress].filter(Boolean).join(" · ")}</p>
                                         {place.phone && <p className="text-[11px] text-gray-400 mt-1">{place.phone}</p>}
                                       </div>
                                       <span
