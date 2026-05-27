@@ -14,7 +14,6 @@ import { useInviteStore } from "../store/inviteStore";
 import type { CoupleInfo, InvitationCover, ColorTheme, NoticeItem, NearbyItem } from "../types";
 import KakaoMap from "../components/common/KakaoMap";
 import { api } from "../api";
-import { loadKakaoMapsSdk } from "../utils/kakaoMapSdk";
 import { getAccessToken, getDisplayNameFromToken } from "../utils/auth";
 
 type TabId =
@@ -41,6 +40,8 @@ interface NearbyRecommendation {
   recommendationType: string;
   x: string;
   y: string;
+  imageUrl?: string;
+  naverMapUrl?: string;
 }
 
 const EDITOR_PINK = "#F4768A";
@@ -518,83 +519,6 @@ export default function CreatePage() {
     const f = e.target.files?.[0]; if (f) setGreetingPhoto(fileToUrl(f)); e.target.value = "";
   };
 
-  const normalizeNearbyPlace = (place: any, recommendationType: string): NearbyRecommendation => ({
-    id: place.id,
-    placeName: place.place_name,
-    addressName: place.address_name,
-    roadAddressName: place.road_address_name,
-    phone: place.phone,
-    categoryName: place.category_name,
-    recommendationType,
-    x: place.x,
-    y: place.y,
-  });
-
-  const resolveVenueCoords = () =>
-    new Promise<any>((resolve, reject) => {
-      const geocoder = new window.kakao.maps.services.Geocoder();
-      const query = address.trim();
-
-      if (query) {
-        geocoder.addressSearch(query, (result: any[], status: string) => {
-          if (status === window.kakao.maps.services.Status.OK && result[0]) {
-            resolve(new window.kakao.maps.LatLng(Number(result[0].y), Number(result[0].x)));
-            return;
-          }
-
-          reject(new Error("address geocode failed"));
-        });
-        return;
-      }
-
-      reject(new Error("empty address"));
-    }).catch(
-      () =>
-        new Promise<any>((resolve, reject) => {
-          const keyword = venueName.trim();
-          if (!keyword) {
-            reject(new Error("empty venue"));
-            return;
-          }
-
-          const places = new window.kakao.maps.services.Places();
-          places.keywordSearch(keyword, (data: any[], status: string) => {
-            if (status === window.kakao.maps.services.Status.OK && data[0]) {
-              resolve(new window.kakao.maps.LatLng(Number(data[0].y), Number(data[0].x)));
-              return;
-            }
-
-            reject(new Error("venue search failed"));
-          });
-        }),
-    );
-
-  const searchNearbyKeyword = (keyword: string, label: string, location: any) =>
-    new Promise<NearbyRecommendation[]>((resolve, reject) => {
-      const places = new window.kakao.maps.services.Places();
-      places.keywordSearch(
-        keyword,
-        (data: any[], status: string) => {
-          if (status === window.kakao.maps.services.Status.OK) {
-            resolve(data.map((place) => normalizeNearbyPlace(place, label)));
-            return;
-          }
-
-          if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
-            resolve([]);
-            return;
-          }
-
-          reject(new Error("nearby place search failed"));
-        },
-        {
-          location,
-          radius: 1200,
-          sort: window.kakao.maps.services.SortBy.DISTANCE,
-        },
-      );
-    });
-
   const handleRecommendNearby = async () => {
     if (!address.trim() && !venueName.trim()) {
       showToast("먼저 예식장 주소나 장소명을 입력해 주세요.");
@@ -603,33 +527,12 @@ export default function CreatePage() {
 
     setNearbyRecommendLoading(true);
     try {
-      await loadKakaoMapsSdk();
-      const location = await resolveVenueCoords();
-      const groups = [
-        { label: "카페", keyword: "카페" },
-        { label: "편의점", keyword: "편의점" },
-        { label: "공원", keyword: "공원" },
-        { label: "음식점", keyword: "맛집" },
-        { label: "주차장", keyword: "주차장" },
-        { label: "포토스팟", keyword: "포토스팟" },
-      ];
-      const resultsByGroup = await Promise.all(
-        groups.map((group) => searchNearbyKeyword(group.keyword, group.label, location)),
-      );
-      const picked: NearbyRecommendation[] = [];
-      const seen = new Set<string>();
-      const maxRows = Math.max(...resultsByGroup.map((results) => results.length), 0);
-
-      for (let row = 0; row < maxRows && picked.length < nearbyRecommendCount; row += 1) {
-        for (const results of resultsByGroup) {
-          const place = results[row];
-          if (!place || seen.has(place.id)) continue;
-          seen.add(place.id);
-          picked.push(place);
-          if (picked.length >= nearbyRecommendCount) break;
-        }
-      }
-
+      const result = await api.recommendNearbyFacilities({
+        venueName,
+        venueAddress: address,
+        count: nearbyRecommendCount,
+      });
+      const picked = result.items as NearbyRecommendation[];
       setNearbyRecommendations(picked);
       setSelectedNearbyIds([]);
       if (picked.length === 0) showToast("주변 추천 장소를 찾지 못했습니다.");
@@ -661,7 +564,7 @@ export default function CreatePage() {
           id: `nb${place.id}`,
           title: place.placeName,
           desc: [place.recommendationType, placeAddress, place.phone].filter(Boolean).join(" · "),
-          imageUrl: "",
+          imageUrl: place.imageUrl ?? "",
         };
       }),
     ]);
@@ -2483,6 +2386,9 @@ export default function CreatePage() {
                                       : { borderColor: "#E5E7EB" }}
                                   >
                                     <div className="flex items-start justify-between gap-3">
+                                      {place.imageUrl && (
+                                        <img src={place.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100" />
+                                      )}
                                       <div className="min-w-0">
                                         <p className="text-sm font-semibold text-gray-800 truncate">{place.placeName}</p>
                                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{[place.recommendationType, category, placeAddress].filter(Boolean).join(" · ")}</p>

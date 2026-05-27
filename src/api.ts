@@ -179,4 +179,17 @@ export const api = {
 
   deleteRsvp: (rsvpId: string) =>
     request(`/rsvps/${rsvpId}`, { method: "DELETE" }),
+
+  recommendNearbyFacilities: (data: {
+    venueName?: string;
+    venueAddress?: string;
+    count?: number;
+    keywords?: string[];
+    recommendationType?: string;
+  }) =>
+    request<{ items: unknown[] }>("/nearby-facilities/recommend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
 };
