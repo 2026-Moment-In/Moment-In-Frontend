@@ -23,4 +23,5 @@ export function getDisplayNameFromToken(token = getAccessToken()) {
 export function clearAuth() {
   localStorage.removeItem("momentin_access_token");
   localStorage.removeItem("momentin_user");
+  window.dispatchEvent(new Event("momentin_auth_changed"));
 }

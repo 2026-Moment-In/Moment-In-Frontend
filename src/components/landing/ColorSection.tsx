@@ -5,11 +5,18 @@ import type { ColorPreset } from "../../types";
 import { COLOR_PRESETS } from "../../types";
 
 const PRESETS: { preset: ColorPreset; label: string }[] = [
-  { preset: "classic", label: "classic" },
-  { preset: "garden",  label: "garden" },
-  { preset: "ocean",   label: "ocean" },
-  { preset: "forest",  label: "forest" },
+  { preset: "classic", label: "클래식" },
+  { preset: "garden", label: "가든" },
+  { preset: "ocean", label: "오션" },
+  { preset: "forest", label: "포레스트" },
 ];
+
+const PALETTE_LABELS: Record<string, string> = {
+  bg: "배경",
+  text: "글자",
+  accent: "포인트",
+  button: "버튼",
+};
 
 export default function ColorSection() {
   const [selected, setSelected] = useState<ColorPreset>("classic");
@@ -21,10 +28,10 @@ export default function ColorSection() {
         <AnimatedSection className="text-center mb-16">
           <p className="text-gold text-xs tracking-[0.4em] uppercase mb-3">Color Theme</p>
           <h2 className="font-serif text-3xl md:text-4xl text-charcoal mb-4">
-            색감 하나하나 가장 잘 어울리게
+            색감 하나까지 우리답게
           </h2>
           <p className="text-muted text-sm max-w-md mx-auto leading-relaxed">
-            배경·글자·버튼·포인트 컬러까지<br />우리 사진에 맞춰 더 예쁘게
+            배경, 글자, 버튼, 포인트 컬러를<br />청첩장 분위기에 맞게 조정해보세요.
           </p>
         </AnimatedSection>
 
@@ -32,7 +39,7 @@ export default function ColorSection() {
           <AnimatedSection direction="left" className="flex flex-col gap-8">
             <div>
               <p className="text-muted text-sm mb-4 leading-relaxed">
-                에디터가 사진을 분석한 다음 최적의 색을 추천해줘요
+                원하는 무드에 맞춰 컬러 테마를 고르고 직접 다듬을 수 있어요.
               </p>
               <div className="flex flex-wrap gap-2">
                 {PRESETS.map((p) => {
@@ -56,9 +63,6 @@ export default function ColorSection() {
                     </button>
                   );
                 })}
-                <button className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm border border-dashed border-gold-light text-gold hover:bg-ivory transition-colors">
-                  + 사진 업로드
-                </button>
               </div>
             </div>
 
@@ -71,11 +75,11 @@ export default function ColorSection() {
                       className="w-10 h-10 rounded-xl shadow-sm border border-white"
                       style={{ backgroundColor: theme[key as keyof typeof theme] as string }}
                     />
-                    <span className="text-[10px] text-muted capitalize">{key}</span>
+                    <span className="text-[10px] text-muted">{PALETTE_LABELS[key]}</span>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted">프리셋을 선택하거나 웨딩 사진을 업로드해보세요</p>
+              <p className="text-xs text-muted">선택한 테마는 에디터에서 세부 색상까지 수정할 수 있어요.</p>
             </div>
           </AnimatedSection>
 

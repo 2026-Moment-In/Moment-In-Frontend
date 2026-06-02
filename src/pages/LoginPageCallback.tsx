@@ -11,6 +11,7 @@ export default function LoginCallbackPage() {
 
     if (token) {
       localStorage.setItem("momentin_access_token", token);
+      window.dispatchEvent(new Event("momentin_auth_changed"));
 
       // 게스트 페이지에서 로그인 유도된 경우 원래 페이지로 복귀
       const returnUrl = sessionStorage.getItem("momentin_return_url");

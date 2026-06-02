@@ -19,9 +19,11 @@ export default function NavBar() {
     const syncAuth = () => setDisplayName(getDisplayNameFromToken());
     window.addEventListener("storage", syncAuth);
     window.addEventListener("focus", syncAuth);
+    window.addEventListener("momentin_auth_changed", syncAuth);
     return () => {
       window.removeEventListener("storage", syncAuth);
       window.removeEventListener("focus", syncAuth);
+      window.removeEventListener("momentin_auth_changed", syncAuth);
     };
   }, []);
 

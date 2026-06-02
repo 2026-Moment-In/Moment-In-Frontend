@@ -1,23 +1,24 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 import AnimatedSection from "../common/AnimatedSection";
 import type { MotionType } from "../../types";
 
 const MOTIONS: { type: MotionType; label: string }[] = [
-  { type: "zoom-in",     label: "줌인" },
-  { type: "zoom-out",    label: "줌아웃" },
-  { type: "slide-right", label: "오른쪽으로" },
-  { type: "slide-left",  label: "왼쪽으로" },
-  { type: "slide-up",    label: "위로" },
+  { type: "zoom-in", label: "줌인" },
+  { type: "zoom-out", label: "줌아웃" },
+  { type: "slide-right", label: "오른쪽" },
+  { type: "slide-left", label: "왼쪽" },
+  { type: "slide-up", label: "위로" },
 ];
 
 type AnimTarget = { scale?: number; x?: number | string; y?: number | string };
 const MOTION_VARIANTS: Record<MotionType, { initial: AnimTarget; animate: AnimTarget }> = {
-  "zoom-in":    { initial: { scale: 1.15 }, animate: { scale: 1 } },
-  "zoom-out":   { initial: { scale: 0.88 }, animate: { scale: 1 } },
-  "slide-right":{ initial: { x: "-8%" },   animate: { x: 0 } },
-  "slide-left": { initial: { x: "8%" },    animate: { x: 0 } },
-  "slide-up":   { initial: { y: "8%" },    animate: { y: 0 } },
+  "zoom-in": { initial: { scale: 1.15 }, animate: { scale: 1 } },
+  "zoom-out": { initial: { scale: 0.88 }, animate: { scale: 1 } },
+  "slide-right": { initial: { x: "-8%" }, animate: { x: 0 } },
+  "slide-left": { initial: { x: "8%" }, animate: { x: 0 } },
+  "slide-up": { initial: { y: "8%" }, animate: { y: 0 } },
 };
 
 const COVER_IMG = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=90";
@@ -52,20 +53,18 @@ export default function CoverShowcase() {
         <AnimatedSection className="text-center mb-16">
           <p className="text-gold text-xs tracking-[0.4em] uppercase mb-3">Cover Design</p>
           <h2 className="font-serif text-3xl md:text-4xl text-charcoal mb-4">
-            초대장의 시작은 감성적이고 빛나게
+            첫 화면을 감성적으로
           </h2>
           <p className="text-muted text-sm max-w-md mx-auto leading-relaxed">
-            두 가지 커버 디자인으로 나만의 첫인상을 완성하세요
+            커버 레이아웃과 모션을 선택해 청첩장의 첫인상을 만들어보세요.
           </p>
         </AnimatedSection>
 
         <div className="grid md:grid-cols-2 gap-16 items-center">
-          {/* Two phone mockups */}
           <AnimatedSection direction="left">
             <div className="flex justify-center gap-6 md:gap-8">
-              {/* Style 1: Full bleed */}
               <div className="flex flex-col items-center gap-3">
-                <p className="text-xs text-muted tracking-widest uppercase">디자인 1</p>
+                <p className="text-xs text-muted tracking-widest uppercase">스타일 1</p>
                 <PhoneMockup>
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -75,20 +74,19 @@ export default function CoverShowcase() {
                       transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] }}
                       className="absolute inset-0"
                     >
-                      <img src={COVER_IMG} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
+                      <img src={COVER_IMG} alt="커버 미리보기" className="absolute inset-0 w-full h-full object-cover" />
                     </motion.div>
                   </AnimatePresence>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10 z-10" />
                   <div className="absolute bottom-0 left-0 right-0 p-5 z-20 text-center">
-                    <p className="font-serif text-base text-white tracking-widest">이준호 ♥ 박서연</p>
+                    <p className="font-serif text-base text-white tracking-widest">이도윤 & 박서아</p>
                     <p className="text-white/60 text-xs mt-1">2025.10.18</p>
                   </div>
                 </PhoneMockup>
               </div>
 
-              {/* Style 2: Split layout */}
               <div className="flex flex-col items-center gap-3">
-                <p className="text-xs text-muted tracking-widest uppercase">디자인 2</p>
+                <p className="text-xs text-muted tracking-widest uppercase">스타일 2</p>
                 <PhoneMockup>
                   <div className="absolute inset-0 bg-white">
                     <AnimatePresence mode="wait">
@@ -100,17 +98,27 @@ export default function CoverShowcase() {
                         className="absolute"
                         style={{ left: 0, top: "6%", width: "65%", height: "88%", overflow: "hidden" }}
                       >
-                        <img src={COVER_IMG} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={COVER_IMG} alt="커버 미리보기" className="absolute inset-0 w-full h-full object-cover" />
                       </motion.div>
                     </AnimatePresence>
-                    <div className="absolute flex flex-col items-center justify-center gap-2"
-                      style={{ right: 0, top: 0, bottom: 0, width: "38%" }}>
+                    <div
+                      className="absolute flex flex-col items-center justify-center gap-2"
+                      style={{ right: 0, top: 0, bottom: 0, width: "38%" }}
+                    >
                       {["26", "06", "20"].map((n, i) => (
-                        <p key={i} className="font-serif leading-none" style={{ fontSize: 26, color: "#3a1a0a", fontWeight: 300 }}>{n}</p>
+                        <p
+                          key={i}
+                          className="font-serif leading-none"
+                          style={{ fontSize: 26, color: "#3a1a0a", fontWeight: 300 }}
+                        >
+                          {n}
+                        </p>
                       ))}
                     </div>
                     <div className="absolute inset-x-0 z-10 text-center" style={{ bottom: 20 }}>
-                      <p className="tracking-widest font-serif" style={{ fontSize: 8, color: "#3a1a0a" }}>이준호 ♥ 박서연</p>
+                      <p className="tracking-widest font-serif" style={{ fontSize: 8, color: "#3a1a0a" }}>
+                        이도윤 & 박서아
+                      </p>
                       <p style={{ fontSize: 7, color: "#3a1a0a80", marginTop: 3 }}>Wedding Invitation</p>
                     </div>
                   </div>
@@ -123,8 +131,7 @@ export default function CoverShowcase() {
             <div>
               <h3 className="font-serif text-2xl text-charcoal mb-2">커버 모션 선택</h3>
               <p className="text-muted text-sm leading-relaxed">
-                에디터에서 더 많은 모션과 이펙트 선택 가능<br />
-                레터링 텍스트 · 그라데이션 연출
+                에디터에서 커버 사진, 모션, 텍스트, 그라데이션을 조정할 수 있어요.
               </p>
             </div>
 
@@ -146,23 +153,23 @@ export default function CoverShowcase() {
 
             <div className="flex flex-col gap-3">
               {[
-                { icon: "✦", text: "풀블리드 · 스플릿 두 가지 레이아웃" },
-                { icon: "◈", text: "레터링 텍스트 커스터마이징" },
-                { icon: "◉", text: "그라데이션 연출 설정" },
-              ].map((item) => (
-                <div key={item.text} className="flex items-center gap-3 text-sm text-secondary">
-                  <span className="text-gold text-xs">{item.icon}</span>
-                  {item.text}
+                "풀스크린과 분할형 커버 레이아웃",
+                "커버 문구와 날짜 표시 설정",
+                "사진 위 그라데이션 강도 조정",
+              ].map((text) => (
+                <div key={text} className="flex items-center gap-3 text-sm text-secondary">
+                  <span className="text-gold text-xs">•</span>
+                  {text}
                 </div>
               ))}
             </div>
 
-            <button
-              onClick={() => handleSelect(selected)}
+            <Link
+              to="/create"
               className="self-start px-6 py-3 bg-gold text-white rounded-full text-sm hover:bg-gold-dark transition-colors"
             >
-              커버 제작하기
-            </button>
+              커버 만들기 시작
+            </Link>
           </AnimatedSection>
         </div>
       </div>

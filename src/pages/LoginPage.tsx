@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
+import { clearAuth, getAccessToken, getDisplayNameFromToken } from "../utils/auth";
 
 function KakaoIcon() {
   return (
@@ -12,8 +14,17 @@ function KakaoIcon() {
 }
 
 export default function LoginPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getAccessToken()));
+  const [displayName, setDisplayName] = useState(() => getDisplayNameFromToken());
+
   const handleKakaoLogin = () => {
     window.location.href = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/auth/kakao`;
+  };
+
+  const handleLogout = () => {
+    clearAuth();
+    setIsLoggedIn(false);
+    setDisplayName(null);
   };
 
   return (
@@ -31,24 +42,41 @@ export default function LoginPage() {
         transition={{ duration: 0.5 }}
         className="relative z-10 bg-ivory rounded-3xl w-full max-w-sm px-10 pt-14 pb-12 flex flex-col items-center"
       >
-        <p className="text-charcoal/50 text-sm tracking-wide mb-8">순간을 남기고 기억을 남기는</p>
+        <p className="text-charcoal/50 text-sm tracking-wide mb-8">
+          시간을 담기고 기억을 남기는 순간
+        </p>
 
         <img src="/images/logo2.png" alt="MomentIn Logo" width={180} height={100} />
 
         <p
-          className="font-bold text-[26px] text-[#3C1E1E] tracking-wider mt-4 mb-16"
+          className="font-bold text-[26px] text-[#3C1E1E] tracking-wider mt-4 mb-4"
           style={{ fontFamily: "var(--font-serif)" }}
         >
           MomentIn
         </p>
 
-        <button
-          onClick={handleKakaoLogin}
-          className="w-full bg-[#FEE500] hover:bg-[#F0D800] active:scale-[0.98] transition-all rounded-2xl py-4 flex items-center justify-center gap-3 text-[#3C1E1E] font-semibold text-base"
-        >
-          <KakaoIcon />
-          카카오톡으로 계속하기
-        </button>
+        <p className="h-10 text-center text-sm text-charcoal/60 mb-8">
+          {isLoggedIn
+            ? `${displayName ?? "사용자"}님으로 로그인되어 있습니다.`
+            : "카카오 계정으로 간편하게 시작하세요."}
+        </p>
+
+        {isLoggedIn ? (
+          <button
+            onClick={handleLogout}
+            className="w-full bg-white hover:bg-[#f7f1e8] active:scale-[0.98] transition-all rounded-2xl py-4 flex items-center justify-center text-[#3C1E1E] font-semibold text-base border border-[#E7D8C5]"
+          >
+            로그아웃
+          </button>
+        ) : (
+          <button
+            onClick={handleKakaoLogin}
+            className="w-full bg-[#FEE500] hover:bg-[#F0D800] active:scale-[0.98] transition-all rounded-2xl py-4 flex items-center justify-center gap-3 text-[#3C1E1E] font-semibold text-base"
+          >
+            <KakaoIcon />
+            카카오톡으로 계속하기
+          </button>
+        )}
       </motion.div>
     </div>
   );

@@ -3,63 +3,63 @@ import { motion } from "framer-motion";
 
 const features = [
   {
-    icon: "⚡",
-    title: "빠른 제작",
-    desc: "예쁜 사진만 골라주세요. 기본 정보만 넣으면 청첩장 완성",
+    icon: "✍",
+    title: "간편한 제작",
+    desc: "예식 정보, 사진, 문구를 입력하면서 모바일 청첩장을 바로 구성할 수 있어요.",
     stats: [
-      { label: "평균 제작 시간", value: "10분" },
-      { label: "수정 가능 기간", value: "무제한" },
-      { label: "제작 가능 시간", value: "24시간" },
+      { label: "사진 업로드", value: "지원" },
+      { label: "문구 수정", value: "가능" },
+      { label: "모바일 미리보기", value: "제공" },
     ],
   },
   {
-    icon: "💎",
-    title: "강력한 에디터",
-    desc: "초강력 에디터로 레터링 및 무빙 애니메이션 커버 제작 가능",
+    icon: "🎬",
+    title: "커버 에디터",
+    desc: "커버 레이아웃과 모션을 선택하고 첫 화면의 분위기를 직접 조정할 수 있어요.",
     stats: [
-      { label: "모션 이펙트", value: "5가지" },
-      { label: "색상 테마", value: "4가지" },
-      { label: "에디터 조합", value: "∞" },
+      { label: "모션 효과", value: "선택" },
+      { label: "커버 레이아웃", value: "2가지" },
+      { label: "그라데이션", value: "조정" },
     ],
   },
   {
-    icon: "💬",
-    title: "맞춤형 공유",
-    desc: "상황에 맞는 다른 템플릿으로 센스있게 공유하세요",
+    icon: "🔗",
+    title: "공유 기능",
+    desc: "완성한 청첩장을 링크로 전달하고 하객이 모바일에서 편하게 확인할 수 있어요.",
     stats: [
-      { label: "공유 템플릿", value: "3가지" },
-      { label: "지원 플랫폼", value: "카카오" },
-      { label: "링크 유지", value: "평생" },
+      { label: "공유 링크", value: "지원" },
+      { label: "카카오 로그인", value: "지원" },
+      { label: "QR 보기", value: "제공" },
     ],
   },
   {
     icon: "📋",
-    title: "편리한 RSVP",
-    desc: "청첩장을 확인하신 분들을 자동으로 집계해 스마트하게 보여드려요",
+    title: "하객 RSVP",
+    desc: "참석 여부, 식사 여부, 동행 인원 같은 응답을 관리 화면에서 확인할 수 있어요.",
     stats: [
-      { label: "엑셀 내보내기", value: "지원" },
-      { label: "실시간 집계", value: "자동" },
+      { label: "참석 응답", value: "관리" },
       { label: "식사 선택", value: "지원" },
+      { label: "관리 화면", value: "제공" },
     ],
   },
   {
-    icon: "🔔",
-    title: "리마인드 알림",
-    desc: "예식 일주일 전, 하루 전 하객들에게 자동으로 리마인드 알림 발송",
+    icon: "📍",
+    title: "오시는 길",
+    desc: "예식장 주소, 지도, 교통 안내를 넣어 하객에게 필요한 위치 정보를 전달해요.",
     stats: [
-      { label: "D-7 알림", value: "자동" },
-      { label: "D-1 알림", value: "자동" },
-      { label: "하객 만족도", value: "↑높음" },
+      { label: "주소 검색", value: "지원" },
+      { label: "지도 표시", value: "제공" },
+      { label: "교통 안내", value: "작성" },
     ],
   },
   {
-    icon: "🔒",
-    title: "보안 강화",
-    desc: "예쁜 우리 사진을 보시는 건 좋지만, 캡쳐하시는 건 방지합니다",
+    icon: "🖼",
+    title: "갤러리 구성",
+    desc: "웨딩 사진을 업로드하고 그리드나 슬라이드 형태로 보여줄 수 있어요.",
     stats: [
-      { label: "드래그 확대 금지", value: "✓" },
-      { label: "우클릭 방지", value: "✓" },
-      { label: "다운로드 금지", value: "✓" },
+      { label: "이미지 업로드", value: "지원" },
+      { label: "그리드", value: "선택" },
+      { label: "슬라이드", value: "선택" },
     ],
   },
 ];
@@ -71,10 +71,10 @@ export default function FeaturesSection() {
         <AnimatedSection className="text-center mb-16">
           <p className="text-gold text-xs tracking-[0.4em] uppercase mb-3">Features</p>
           <h2 className="font-serif text-3xl md:text-4xl text-charcoal mb-4">
-            간편하게 제작하고, 예쁘게 공유하기
+            필요한 기능을 한 화면에서
           </h2>
           <p className="text-muted text-sm max-w-md mx-auto">
-            필요한 기능은 모두 MomentIn 안에 담았어요
+            청첩장 제작부터 공유, 하객 응답 관리까지 MomentIn에서 이어집니다.
           </p>
         </AnimatedSection>
 
