@@ -1,30 +1,49 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { api } from "../api";
 
 export default function LoginCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. 주소창에 매달려온 token=xxxx 값을 쏙 빼옵니다.
-    const token = searchParams.get("token");
+    let cancelled = false;
 
-    if (token) {
+    async function completeLogin() {
+      const token = searchParams.get("token");
+
+      if (!token) {
+        console.error("토큰을 찾을 수 없습니다.");
+        navigate("/login", { replace: true });
+        return;
+      }
+
       localStorage.setItem("momentin_access_token", token);
       window.dispatchEvent(new Event("momentin_auth_changed"));
 
-      // 게스트 페이지에서 로그인 유도된 경우 원래 페이지로 복귀
       const returnUrl = sessionStorage.getItem("momentin_return_url");
       if (returnUrl) {
         sessionStorage.removeItem("momentin_return_url");
-        navigate(returnUrl, { replace: true });
-      } else {
-        navigate("/create", { replace: true });
+        if (!cancelled) navigate(returnUrl, { replace: true });
+        return;
       }
-    } else {
-      console.error("토큰을 찾을 수 없습니다.");
-      navigate("/login");
+
+      try {
+        const weddings = await api.getMyWeddings();
+        if (!cancelled) {
+          navigate(weddings.length > 0 ? "/manage" : "/create", { replace: true });
+        }
+      } catch (error) {
+        console.error("로그인 후 내 청첩장 조회에 실패했습니다.", error);
+        if (!cancelled) navigate("/create", { replace: true });
+      }
     }
+
+    completeLogin();
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, navigate]);
 
   return (
