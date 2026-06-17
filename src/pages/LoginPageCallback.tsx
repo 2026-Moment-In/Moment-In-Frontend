@@ -10,7 +10,14 @@ export default function LoginCallbackPage() {
     let cancelled = false;
 
     async function completeLogin() {
+      const error = searchParams.get("error");
       const token = searchParams.get("token");
+
+      if (error) {
+        console.error("로그인에 실패했습니다.", error);
+        navigate("/login", { replace: true });
+        return;
+      }
 
       if (!token) {
         console.error("토큰을 찾을 수 없습니다.");
