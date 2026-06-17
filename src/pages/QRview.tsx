@@ -15,8 +15,8 @@ export default function QRview() {
   useEffect(() => {
     if (!code) return;
 
-    const frontUrl = import.meta.env.VITE_FRONT_URL ?? window.location.origin;
-    QRCode.toDataURL(`${frontUrl}/enter?code=${code}`, {
+    const frontUrl = import.meta.env.VITE_FRONT_URL || window.location.origin;
+    QRCode.toDataURL(`${frontUrl}/show/${code}`, {
       width: 160,
       margin: 2,
       color: { dark: '#2c1a0e', light: '#ffffff' },

@@ -486,7 +486,6 @@ export default function CreatePage() {
   const [messages, setMessages]             = useState<LocalMessage[]>(DEFAULT_MESSAGES);
 
   const [galleryLayout, setGalleryLayout]   = useState<GalleryLayout>("grid");
-  const [requireKakaoAuth, setRequireKakaoAuth] = useState(false);
   const [gallery, setGallery]               = useState<string[]>(DEMO_COVER_IMAGES.slice(0, 4));
   const [lightboxIdx, setLightboxIdx]       = useState<number | null>(null);
 
@@ -2577,12 +2576,6 @@ export default function CreatePage() {
                               </div>
                             </button>
                           ))}
-                        </div>
-                      </SectionBlock>
-                      <SectionBlock title="업로드 설정">
-                        <div className="flex items-center justify-between py-1">
-                          <div><p className="text-sm text-gray-700">카카오 로그인 필요</p><p className="text-xs text-gray-400 mt-0.5">카카오 인증 후 업로드 가능</p></div>
-                          <Toggle value={requireKakaoAuth} onChange={setRequireKakaoAuth} />
                         </div>
                       </SectionBlock>
                     </>
