@@ -41,6 +41,7 @@ interface NearbyRecommendation {
   x: string;
   y: string;
   imageUrl?: string;
+  placeUrl?: string;
   naverMapUrl?: string;
 }
 
@@ -529,8 +530,51 @@ export default function CreatePage() {
     setCoverZoom(1);
   };
 
+  const setVenueAddress = (nextAddress: string) => {
+    setAddress(nextAddress);
+    setNearbyRecommendations([]);
+    setSelectedNearbyIds([]);
+  };
+
+  const openPostcodeSearch = () => {
+    const postcode = (window as any).daum?.Postcode;
+    if (!postcode) {
+      showToast("우편번호 검색을 불러오지 못했습니다.");
+      return;
+    }
+
+    new postcode({
+      oncomplete: (data: any) => {
+        const nextAddress = data.roadAddress || data.autoRoadAddress || data.jibunAddress || "";
+        setVenueAddress(nextAddress.trim());
+      },
+    }).open();
+  };
+
+  const buildFallbackNearbyRecommendations = (keyword: string, count: number): NearbyRecommendation[] => {
+    const categories = ["음식점", "카페", "주차장", "문화시설", "관광명소", "숙박"];
+    return categories.slice(0, count).map((category, index) => ({
+      id: `local-${index}-${category}`,
+      placeName: `${keyword} 주변 ${category}`,
+      recommendationType: category,
+      phone: "",
+      categoryName: category,
+      addressName: keyword,
+      roadAddressName: keyword,
+      placeUrl: "",
+      naverMapUrl: `https://map.naver.com/v5/search/${encodeURIComponent(`${keyword} ${category}`)}`,
+      x: "",
+      y: "",
+      imageUrl: "",
+    }));
+  };
+
   const handleRecommendNearby = async () => {
-    if (!address.trim() && !venueName.trim()) {
+    const venueAddress = address.trim();
+    const currentVenueName = venueName.trim();
+    const keyword = venueAddress || currentVenueName;
+
+    if (!keyword) {
       showToast("먼저 예식장 주소나 장소명을 입력해 주세요.");
       return;
     }
@@ -538,16 +582,19 @@ export default function CreatePage() {
     setNearbyRecommendLoading(true);
     try {
       const result = await api.recommendNearbyFacilities({
-        venueName,
-        venueAddress: address,
+        venueName: currentVenueName || undefined,
+        venueAddress: venueAddress || undefined,
         count: nearbyRecommendCount,
       });
       const picked = result.items as NearbyRecommendation[];
       setNearbyRecommendations(picked);
       setSelectedNearbyIds([]);
       if (picked.length === 0) showToast("주변 추천 장소를 찾지 못했습니다.");
-    } catch {
-      showToast("주변 장소 추천을 불러오지 못했습니다.");
+    } catch (err) {
+      console.error("주변 장소 추천 실패:", err);
+      setNearbyRecommendations(buildFallbackNearbyRecommendations(keyword, nearbyRecommendCount));
+      setSelectedNearbyIds([]);
+      showToast("주소 기준 기본 추천을 표시했습니다.");
     } finally {
       setNearbyRecommendLoading(false);
     }
@@ -2010,13 +2057,7 @@ export default function CreatePage() {
                           <div className="flex gap-2">
                             <input className={`${inputCls} flex-1`} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="도로명 주소" readOnly />
                             <button
-                              onClick={() => {
-                                new (window as any).daum.Postcode({
-                                  oncomplete: (data: any) => {
-                                    setAddress(data.roadAddress || data.autoRoadAddress || data.jibunAddress);
-                                  },
-                                }).open();
-                              }}
+                              onClick={openPostcodeSearch}
                               className="px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium whitespace-nowrap hover:bg-gray-700 transition-colors"
                             >
                               우편번호 검색
@@ -2371,12 +2412,21 @@ export default function CreatePage() {
                           <div className="grid grid-cols-[1fr_92px] gap-2">
                             <div className="flex flex-col gap-1.5 min-w-0">
                               <label className="text-xs text-gray-500">추천 기준</label>
-                              <input
-                                className={inputCls}
-                                value={address || venueName}
-                                readOnly
-                                placeholder="오시는길에서 식장 주소를 먼저 입력해 주세요"
-                              />
+                              <div className="flex gap-2">
+                                <input
+                                  className={`${inputCls} flex-1 min-w-0`}
+                                  value={address || venueName}
+                                  readOnly
+                                  placeholder="오시는길에서 식장 주소를 먼저 입력해 주세요"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={openPostcodeSearch}
+                                  className="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-medium whitespace-nowrap hover:bg-gray-200 transition-colors"
+                                >
+                                  주소 검색
+                                </button>
+                              </div>
                             </div>
                             <div className="flex flex-col gap-1.5">
                               <label className="text-xs text-gray-500">추천 개수</label>
