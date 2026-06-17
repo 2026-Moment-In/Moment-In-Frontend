@@ -2459,11 +2459,13 @@ export default function CreatePage() {
                                       ? { borderColor: EDITOR_PINK, backgroundColor: EDITOR_PINK_BG }
                                       : { borderColor: "#E5E7EB" }}
                                   >
-                                    <div className="flex items-start justify-between gap-3">
-                                      {place.imageUrl && (
-                                        <img src={place.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100" />
-                                      )}
-                                      <div className="min-w-0">
+                                    <div className="grid grid-cols-[64px_1fr_auto] items-start gap-3">
+                                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                        {place.imageUrl && (
+                                          <img src={place.imageUrl} alt="" className="w-full h-full object-cover" />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0 pt-0.5">
                                         <p className="text-sm font-semibold text-gray-800 truncate">{place.placeName}</p>
                                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{[place.recommendationType, category, placeAddress].filter(Boolean).join(" · ")}</p>
                                         {place.phone && <p className="text-[11px] text-gray-400 mt-1">{place.phone}</p>}
