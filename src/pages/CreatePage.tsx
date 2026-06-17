@@ -551,24 +551,6 @@ export default function CreatePage() {
     }).open();
   };
 
-  const buildFallbackNearbyRecommendations = (keyword: string, count: number): NearbyRecommendation[] => {
-    const categories = ["음식점", "카페", "주차장", "문화시설", "관광명소", "숙박"];
-    return categories.slice(0, count).map((category, index) => ({
-      id: `local-${index}-${category}`,
-      placeName: `${keyword} 주변 ${category}`,
-      recommendationType: category,
-      phone: "",
-      categoryName: category,
-      addressName: keyword,
-      roadAddressName: keyword,
-      placeUrl: "",
-      naverMapUrl: `https://map.naver.com/v5/search/${encodeURIComponent(`${keyword} ${category}`)}`,
-      x: "",
-      y: "",
-      imageUrl: "",
-    }));
-  };
-
   const handleRecommendNearby = async () => {
     const venueAddress = address.trim();
     const currentVenueName = venueName.trim();
@@ -586,18 +568,26 @@ export default function CreatePage() {
         venueAddress: venueAddress || undefined,
         count: nearbyRecommendCount,
       });
-      const picked = result.items as NearbyRecommendation[];
+      const picked = (result.items as NearbyRecommendation[]).filter((place) => {
+        const placeName = place.placeName?.trim() ?? "";
+        return placeName && !isSyntheticNearbyPlaceName(placeName, keyword);
+      });
       setNearbyRecommendations(picked);
       setSelectedNearbyIds([]);
       if (picked.length === 0) showToast("주변 추천 장소를 찾지 못했습니다.");
     } catch (err) {
       console.error("주변 장소 추천 실패:", err);
-      setNearbyRecommendations(buildFallbackNearbyRecommendations(keyword, nearbyRecommendCount));
+      setNearbyRecommendations([]);
       setSelectedNearbyIds([]);
-      showToast("주소 기준 기본 추천을 표시했습니다.");
+      showToast("네이버 주변 시설 정보를 불러오지 못했습니다.");
     } finally {
       setNearbyRecommendLoading(false);
     }
+  };
+
+  const isSyntheticNearbyPlaceName = (placeName: string, baseKeyword: string) => {
+    const syntheticPattern = /주변\s*(음식점|카페|편의점|공원|맛집|주차장|포토스팟|문화시설|관광명소|숙박)$/;
+    return placeName.startsWith(`${baseKeyword} 주변 `) || syntheticPattern.test(placeName);
   };
 
   const handleToggleRecommendedNearby = (placeId: string) => {
