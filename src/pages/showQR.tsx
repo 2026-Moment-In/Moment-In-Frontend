@@ -237,6 +237,14 @@ export default function ShowQR() {
   const gradientStyle  = showGradient ? (GRADIENT_MAP[`${data.gradientDir ?? 'bottom'}-${data.gradientTone ?? 'medium'}`] ?? GRADIENT_MAP['bottom-medium']) : null;
   const coverTextColor = (data.coverTextColor as string) ?? '#ffffff';
   const imgFilter      = `brightness(${data.brightness ?? 1}) contrast(${data.contrast ?? 1}) saturate(${data.saturation ?? 1}) grayscale(${data.grayscale ?? 0})`;
+  const coverObjectPosition = `${data.coverCropX ?? 50}% ${data.coverCropY ?? 50}%`;
+  const coverImageStyle = {
+    objectFit: 'cover' as const,
+    objectPosition: coverObjectPosition,
+    filter: imgFilter,
+    transform: `scale(${data.coverZoom ?? 1})`,
+    transformOrigin: coverObjectPosition,
+  };
   const showCountdown  = data.showCountdown !== false;
 
   // ── Couple ──
@@ -282,10 +290,10 @@ export default function ShowQR() {
   const basicInfoPreset = (data.basicInfoPreset as string) ?? 'simple';
   const hideParents    = !!data.hideParents;
   const people = (groomFirst
-    ? [{ label: '신랑', name: groomName,  intro: data.groomIntro, relation: data.groomRelation, photo: data.groomPhoto, dad: data.groomDadName, dadD: !!data.groomDadDeceased, mom: data.groomMomName, momD: !!data.groomMomDeceased, contact: data.groomContact },
-       { label: '신부', name: brideName,  intro: data.brideIntro, relation: data.brideRelation, photo: data.bridePhoto, dad: data.brideDadName, dadD: !!data.brideDadDeceased, mom: data.brideMomName, momD: !!data.brideMomDeceased, contact: data.brideContact }]
-    : [{ label: '신부', name: brideName,  intro: data.brideIntro, relation: data.brideRelation, photo: data.bridePhoto, dad: data.brideDadName, dadD: !!data.brideDadDeceased, mom: data.brideMomName, momD: !!data.brideMomDeceased, contact: data.brideContact },
-       { label: '신랑', name: groomName,  intro: data.groomIntro, relation: data.groomRelation, photo: data.groomPhoto, dad: data.groomDadName, dadD: !!data.groomDadDeceased, mom: data.groomMomName, momD: !!data.groomMomDeceased, contact: data.groomContact }]
+    ? [{ label: '신랑', name: groomName,  intro: data.groomIntro, photo: data.groomPhoto, dad: data.groomDadName, dadD: !!data.groomDadDeceased, mom: data.groomMomName, momD: !!data.groomMomDeceased, contact: data.groomContact },
+       { label: '신부', name: brideName,  intro: data.brideIntro, photo: data.bridePhoto, dad: data.brideDadName, dadD: !!data.brideDadDeceased, mom: data.brideMomName, momD: !!data.brideMomDeceased, contact: data.brideContact }]
+    : [{ label: '신부', name: brideName,  intro: data.brideIntro, photo: data.bridePhoto, dad: data.brideDadName, dadD: !!data.brideDadDeceased, mom: data.brideMomName, momD: !!data.brideMomDeceased, contact: data.brideContact },
+       { label: '신랑', name: groomName,  intro: data.groomIntro, photo: data.groomPhoto, dad: data.groomDadName, dadD: !!data.groomDadDeceased, mom: data.groomMomName, momD: !!data.groomMomDeceased, contact: data.groomContact }]
   );
 
   const copyAccount = (acc: Account, key: string) => {
@@ -351,8 +359,10 @@ export default function ShowQR() {
         {/* clip wrapper: overflow hidden 이미지에만 적용, 섹션 자체에는 적용 안 함 */}
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
           {coverLayout !== 'style2' && coverImage && (
-            <motion.img src={coverImage} alt="" initial={{ scale: 1.08 }} animate={{ scale: 1 }} transition={{ duration: 3, ease: [0.22, 1, 0.36, 1] }}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: imgFilter }} />
+            <motion.div initial={{ scale: 1.08 }} animate={{ scale: 1 }} transition={{ duration: 3, ease: [0.22, 1, 0.36, 1] }}
+              style={{ position: 'absolute', inset: 0 }}>
+              <img src={coverImage} alt="" style={{ width: '100%', height: '100%', ...coverImageStyle }} />
+            </motion.div>
           )}
           {coverLayout !== 'style2' && !coverImage && (
             <div style={{ position: 'absolute', inset: 0, backgroundColor: fontColor + '18' }} />
@@ -366,7 +376,7 @@ export default function ShowQR() {
           <>
             <div style={{ position: 'absolute', inset: 0, backgroundColor: bg, pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', left: 0, top: '6%', width: '65%', height: '88%', overflow: 'hidden', pointerEvents: 'none' }}>
-              {coverImage && <img src={coverImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: imgFilter }} />}
+              {coverImage && <img src={coverImage} alt="" style={{ width: '100%', height: '100%', ...coverImageStyle }} />}
               {showGradient && gradientStyle && <div style={{ position: 'absolute', inset: 0, background: gradientStyle }} />}
             </div>
             <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '38%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, pointerEvents: 'none' }}>
@@ -445,7 +455,6 @@ export default function ShowQR() {
                     {!hideParents && (p.dad || p.mom) && (
                       <div style={{ textAlign: 'center', lineHeight: 1.6 }}>
                         <p style={{ fontSize: 12, opacity: 0.5, fontFamily: 'sans-serif' }}>{(p.dadD ? '故 ' : '') + (p.dad || '')} · {(p.momD ? '故 ' : '') + (p.mom || '')}</p>
-                        <p style={{ fontSize: 12, opacity: 0.5, fontFamily: 'sans-serif' }}>의 {p.relation}</p>
                       </div>
                     )}
                     <p style={{ fontSize: 19, fontWeight: 400, letterSpacing: 1 }}>{p.name}</p>
@@ -465,7 +474,6 @@ export default function ShowQR() {
                     {!hideParents && (p.dad || p.mom) && (
                       <div style={{ marginBottom: 8, lineHeight: 1.6 }}>
                         <p style={{ fontSize: 12, opacity: 0.5, fontFamily: 'sans-serif' }}>{(p.dadD ? '故 ' : '') + (p.dad || '')} · {(p.momD ? '故 ' : '') + (p.mom || '')}</p>
-                        <p style={{ fontSize: 12, opacity: 0.5, fontFamily: 'sans-serif' }}>의 {p.relation}</p>
                       </div>
                     )}
                     <p style={{ fontSize: 19, fontWeight: 400 }}>{p.name}</p>
@@ -484,7 +492,7 @@ export default function ShowQR() {
                   <div key={p.name} style={{ marginBottom: i < people.length - 1 ? 18 : 0 }}>
                     {!hideParents && (p.dad || p.mom) && (
                       <p style={{ fontSize: 12, opacity: 0.5, fontFamily: 'sans-serif', marginBottom: 4 }}>
-                        {(p.dadD ? '故 ' : '') + (p.dad || '')} · {(p.momD ? '故 ' : '') + (p.mom || '')}의 {p.relation}
+                        {(p.dadD ? '故 ' : '') + (p.dad || '')} · {(p.momD ? '故 ' : '') + (p.mom || '')}
                       </p>
                     )}
                     <p style={{ fontSize: 20, letterSpacing: 3 }}>{p.name}</p>
