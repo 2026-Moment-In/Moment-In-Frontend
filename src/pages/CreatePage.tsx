@@ -579,7 +579,12 @@ export default function CreatePage() {
       console.error("주변 장소 추천 실패:", err);
       setNearbyRecommendations([]);
       setSelectedNearbyIds([]);
-      showToast("네이버 주변 시설 정보를 불러오지 못했습니다.");
+      const message = err instanceof Error ? err.message : "";
+      showToast(
+        message.includes("NAVER_CLIENT_ID") || message.includes("NAVER_CLIENT_SECRET")
+          ? "백엔드에 네이버 API 키가 설정되지 않았습니다."
+          : "네이버 주변 시설 정보를 불러오지 못했습니다.",
+      );
     } finally {
       setNearbyRecommendLoading(false);
     }

@@ -27,7 +27,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${path}`);
+    const body = await res.text();
+    let message = body;
+
+    try {
+      const parsed = JSON.parse(body) as { message?: string | string[]; error?: string };
+      if (Array.isArray(parsed.message)) {
+        message = parsed.message.join(", ");
+      } else {
+        message = parsed.message || parsed.error || body;
+      }
+    } catch {
+      // Use plain response text when the server does not return JSON.
+    }
+
+    throw new Error(message || `API error ${res.status}: ${path}`);
   }
 
   return res.json() as Promise<T>;
