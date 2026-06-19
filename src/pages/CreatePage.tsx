@@ -36,11 +36,12 @@ interface NearbyRecommendation {
   addressName: string;
   roadAddressName: string;
   phone: string;
-  categoryName: string;
+  categoryName?: string;
   recommendationType: string;
   x: string;
   y: string;
   imageUrl?: string;
+  placeUrl?: string;
   naverMapUrl?: string;
 }
 
@@ -402,7 +403,10 @@ export default function CreatePage() {
   const [contrast, setContrast]             = useState(1.0);
   const [saturation, setSaturation]         = useState(1.0);
   const [grayscale, setGrayscale]           = useState(0.0);
-  const [temperature, setTemperature]       = useState(0.0);
+  const [coverCropX, setCoverCropX]         = useState(50);
+  const [coverCropY, setCoverCropY]         = useState(50);
+  const [coverZoom, setCoverZoom]           = useState(1);
+  const [showCoverCrop, setShowCoverCrop]   = useState(false);
 
   const [fontFamily, setFontFamily]         = useState<FontId>("pretendard");
   const [bgTexture, setBgTexture]           = useState("none");
@@ -421,11 +425,9 @@ export default function CreatePage() {
   const [basicInfoPreset, setBasicInfoPreset] = useState<BasicInfoPreset>("simple");
   const [groomName, setGroomName]             = useState("이준호");
   const [groomIntro, setGroomIntro]           = useState("다정하고 따뜻한 사람");
-  const [groomRelation, setGroomRelation]     = useState("아들");
   const [groomContact, setGroomContact]       = useState("");
   const [brideName, setBrideName]             = useState("박서연");
   const [brideIntro, setBrideIntro]           = useState("밝고 사랑스러운 사람");
-  const [brideRelation, setBrideRelation]     = useState("딸");
   const [brideContact, setBrideContact]       = useState("");
   const [showContact, setShowContact]         = useState(false);
   const [groomDadName, setGroomDadName]       = useState("이상훈");
@@ -484,7 +486,6 @@ export default function CreatePage() {
   const [messages, setMessages]             = useState<LocalMessage[]>(DEFAULT_MESSAGES);
 
   const [galleryLayout, setGalleryLayout]   = useState<GalleryLayout>("grid");
-  const [requireKakaoAuth, setRequireKakaoAuth] = useState(false);
   const [gallery, setGallery]               = useState<string[]>(DEMO_COVER_IMAGES.slice(0, 4));
   const [lightboxIdx, setLightboxIdx]       = useState<number | null>(null);
 
@@ -518,9 +519,43 @@ export default function CreatePage() {
   const handleGreetingPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (f) setGreetingPhoto(fileToUrl(f)); e.target.value = "";
   };
+  const resetCoverImageAdjustments = () => {
+    setBrightness(1);
+    setContrast(1);
+    setSaturation(1);
+    setGrayscale(0);
+    setCoverCropX(50);
+    setCoverCropY(50);
+    setCoverZoom(1);
+  };
+
+  const setVenueAddress = (nextAddress: string) => {
+    setAddress(nextAddress);
+    setNearbyRecommendations([]);
+    setSelectedNearbyIds([]);
+  };
+
+  const openPostcodeSearch = () => {
+    const postcode = (window as any).daum?.Postcode;
+    if (!postcode) {
+      showToast("우편번호 검색을 불러오지 못했습니다.");
+      return;
+    }
+
+    new postcode({
+      oncomplete: (data: any) => {
+        const nextAddress = data.roadAddress || data.autoRoadAddress || data.jibunAddress || "";
+        setVenueAddress(nextAddress.trim());
+      },
+    }).open();
+  };
 
   const handleRecommendNearby = async () => {
-    if (!address.trim() && !venueName.trim()) {
+    const venueAddress = address.trim();
+    const currentVenueName = venueName.trim();
+    const keyword = venueAddress || currentVenueName;
+
+    if (!keyword) {
       showToast("먼저 예식장 주소나 장소명을 입력해 주세요.");
       return;
     }
@@ -528,19 +563,35 @@ export default function CreatePage() {
     setNearbyRecommendLoading(true);
     try {
       const result = await api.recommendNearbyFacilities({
-        venueName,
-        venueAddress: address,
+        venueName: currentVenueName || undefined,
+        venueAddress: venueAddress || undefined,
         count: nearbyRecommendCount,
       });
-      const picked = result.items as NearbyRecommendation[];
+      const picked = (result.items as NearbyRecommendation[]).filter((place) => {
+        const placeName = place.placeName?.trim() ?? "";
+        return placeName && !isSyntheticNearbyPlaceName(placeName, keyword);
+      });
       setNearbyRecommendations(picked);
       setSelectedNearbyIds([]);
       if (picked.length === 0) showToast("주변 추천 장소를 찾지 못했습니다.");
-    } catch {
-      showToast("주변 장소 추천을 불러오지 못했습니다.");
+    } catch (err) {
+      console.error("주변 장소 추천 실패:", err);
+      setNearbyRecommendations([]);
+      setSelectedNearbyIds([]);
+      const message = err instanceof Error ? err.message : "";
+      showToast(
+        message.includes("NAVER_CLIENT_ID") || message.includes("NAVER_CLIENT_SECRET")
+          ? "백엔드에 네이버 API 키가 설정되지 않았습니다."
+          : "네이버 주변 시설 정보를 불러오지 못했습니다.",
+      );
     } finally {
       setNearbyRecommendLoading(false);
     }
+  };
+
+  const isSyntheticNearbyPlaceName = (placeName: string, baseKeyword: string) => {
+    const syntheticPattern = /주변\s*(음식점|카페|편의점|공원|맛집|주차장|포토스팟|문화시설|관광명소|숙박)$/;
+    return placeName.startsWith(`${baseKeyword} 주변 `) || syntheticPattern.test(placeName);
   };
 
   const handleToggleRecommendedNearby = (placeId: string) => {
@@ -595,6 +646,9 @@ export default function CreatePage() {
       if (d.contrast !== undefined) setContrast(d.contrast);
       if (d.saturation !== undefined) setSaturation(d.saturation);
       if (d.grayscale !== undefined) setGrayscale(d.grayscale);
+      if (d.coverCropX !== undefined) setCoverCropX(d.coverCropX);
+      if (d.coverCropY !== undefined) setCoverCropY(d.coverCropY);
+      if (d.coverZoom !== undefined) setCoverZoom(d.coverZoom);
       if (d.greetingTitle) setGreetingTitle(d.greetingTitle);
       if (d.greetingBody) setGreetingMsg(d.greetingBody);
       if (d.greetingPhoto) setGreetingPhoto(d.greetingPhoto);
@@ -602,8 +656,6 @@ export default function CreatePage() {
       if (d.greetingBgPos) setGreetingBgPos(d.greetingBgPos);
       if (d.groomName) setGroomName(d.groomName);
       if (d.brideName) setBrideName(d.brideName);
-      if (d.groomRelation) setGroomRelation(d.groomRelation);
-      if (d.brideRelation) setBrideRelation(d.brideRelation);
       if (d.groomIntro) setGroomIntro(d.groomIntro);
       if (d.brideIntro) setBrideIntro(d.brideIntro);
       if (d.groomDadName) setGroomDadName(d.groomDadName);
@@ -683,6 +735,13 @@ export default function CreatePage() {
   const ceremonySubtitleMap = { ko: "예식 정보", en: "Date & Venue", ja: "式場案内", zh: "婚礼信息" };
 
   const imgFilter = `brightness(${brightness}) contrast(${contrast}) saturate(${saturation}) grayscale(${grayscale})`;
+  const coverObjectPosition = `${coverCropX}% ${coverCropY}%`;
+  const coverImageStyle = {
+    filter: imgFilter,
+    objectPosition: coverObjectPosition,
+    transform: `scale(${coverZoom})`,
+    transformOrigin: coverObjectPosition,
+  };
 
   const buildInvitationPayload = () => {
     const transportInfo: Record<string, string> = {};
@@ -703,13 +762,13 @@ export default function CreatePage() {
         showGradient, gradientDir, gradientTone,
         coverTextColor, showCountdown,
         brightness, contrast, saturation, grayscale,
+        coverCropX, coverCropY, coverZoom,
         // 인사말
         greetingTitle, greetingBody: greetingMsg,
         greetingPhoto: safeUrl(greetingPhoto),
         greetingAnim, greetingBgPos,
         // 기본 정보
         groomName,  brideName,
-        groomRelation, brideRelation,
         groomIntro, brideIntro,
         groomDadName, groomMomName, brideDadName, brideMomName,
         groomDadDeceased, groomMomDeceased, brideDadDeceased, brideMomDeceased,
@@ -832,7 +891,7 @@ export default function CreatePage() {
                   <>
                     <AnimatePresence mode="wait">
                       <motion.div key={motionKey} initial={motionCfg.initial} animate={{ scale: 1, x: 0, y: 0 }} transition={{ duration: 2.5, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0">
-                        <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={{ filter: imgFilter }} />
+                        <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={coverImageStyle} />
                       </motion.div>
                     </AnimatePresence>
                     {showGradient && <div className={`absolute inset-0 ${gradientClass} z-10`} />}
@@ -853,7 +912,7 @@ export default function CreatePage() {
                     <AnimatePresence mode="wait">
                       <motion.div key={motionKey} initial={motionCfg.initial} animate={{ scale: 1, x: 0, y: 0 }} transition={{ duration: 2.5, ease: [0.22, 1, 0.36, 1] }}
                         className="absolute" style={{ left: 0, top: "6%", width: "65%", height: "88%", overflow: "hidden" }}>
-                        <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={{ filter: imgFilter }} />
+                        <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={coverImageStyle} />
                         {showGradient && <div className={`absolute inset-0 ${gradientClass}`} />}
                       </motion.div>
                     </AnimatePresence>
@@ -886,7 +945,7 @@ export default function CreatePage() {
 
                 {/* 커버 썸네일 */}
                 <div className="relative flex-shrink-0 z-10" style={{ height: 190 }}>
-                  <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={{ filter: imgFilter }} />
+                  <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={coverImageStyle} />
                   {showGradient && <div className={`absolute inset-0 ${gradientClass}`} />}
                   <div className="absolute inset-x-0 bottom-8 z-10 text-center px-4">
                     <p className="tracking-widest text-[12px]" style={{ color: coverTextColor, ...fontStyle }}>{groomName} ♥ {brideName}</p>
@@ -930,12 +989,12 @@ export default function CreatePage() {
                 <motion.div variants={PREVIEW_SECTION} transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 px-3 py-2 mb-10">
                   {(() => {
                     const people = groomFirst
-                      ? [{ label: "신랑", name: groomName, intro: groomIntro, relation: groomRelation, photo: groomPhoto, dad: groomDadName, dadD: groomDadDeceased, mom: groomMomName, momD: groomMomDeceased },
-                         { label: "신부", name: brideName, intro: brideIntro, relation: brideRelation, photo: bridePhoto, dad: brideDadName, dadD: brideDadDeceased, mom: brideMomName, momD: brideMomDeceased }]
-                      : [{ label: "신부", name: brideName, intro: brideIntro, relation: brideRelation, photo: bridePhoto, dad: brideDadName, dadD: brideDadDeceased, mom: brideMomName, momD: brideMomDeceased },
-                         { label: "신랑", name: groomName, intro: groomIntro, relation: groomRelation, photo: groomPhoto, dad: groomDadName, dadD: groomDadDeceased, mom: groomMomName, momD: groomMomDeceased }];
+                      ? [{ label: "신랑", name: groomName, intro: groomIntro, photo: groomPhoto, dad: groomDadName, dadD: groomDadDeceased, mom: groomMomName, momD: groomMomDeceased },
+                         { label: "신부", name: brideName, intro: brideIntro, photo: bridePhoto, dad: brideDadName, dadD: brideDadDeceased, mom: brideMomName, momD: brideMomDeceased }]
+                      : [{ label: "신부", name: brideName, intro: brideIntro, photo: bridePhoto, dad: brideDadName, dadD: brideDadDeceased, mom: brideMomName, momD: brideMomDeceased },
+                         { label: "신랑", name: groomName, intro: groomIntro, photo: groomPhoto, dad: groomDadName, dadD: groomDadDeceased, mom: groomMomName, momD: groomMomDeceased }];
 
-                    /* ── 듀오: 이미지 카드 + 부모·관계·이름 ── */
+                    /* ── 듀오: 이미지 카드 + 부모·이름 ── */
                     if (basicInfoPreset === "duo") return (
                       <div className="text-center py-2">
                         <p className="text-[7px] tracking-[0.3em] uppercase mb-0.5" style={{ color: fontColor, opacity: 0.45 }}>Basic Information</p>
@@ -956,11 +1015,10 @@ export default function CreatePage() {
                                     </>
                                 }
                               </div>
-                              {/* 부모·관계·이름 */}
+                              {/* 부모·이름 */}
                               {!hideParents && (
                                 <div className="text-center leading-tight">
                                   <p className="text-[8px]" style={{ color: fontColor, opacity: 0.6 }}>{(p.dadD ? "故 " : "") + p.dad}·{(p.momD ? "故 " : "") + p.mom}</p>
-                                  <p className="text-[8px]" style={{ color: fontColor, opacity: 0.6 }}>의 {p.relation}</p>
                                 </div>
                               )}
                               <p className="font-serif text-[13px]" style={{ color: fontColor }}>{p.name}</p>
@@ -982,7 +1040,6 @@ export default function CreatePage() {
                               {!hideParents && (
                                 <div className="text-center leading-snug">
                                   <p className="text-[8px]" style={{ color: fontColor, opacity: 0.6 }}>{(p.dadD ? "故 " : "") + p.dad}·{(p.momD ? "故 " : "") + p.mom}</p>
-                                  <p className="text-[8px]" style={{ color: fontColor, opacity: 0.6 }}>의 {p.relation}</p>
                                 </div>
                               )}
                               <p className="font-serif text-[13px] mt-0.5" style={{ color: fontColor }}>{p.name}</p>
@@ -1000,7 +1057,7 @@ export default function CreatePage() {
                         <p className="font-serif text-[12px] mb-3" style={{ color: fontColor }}>{basicInfoTitle}</p>
                         {people.map((p) => (
                           <div key={p.name} className="mb-2 last:mb-0">
-                            {!hideParents && <p className="text-[7px]" style={{ color: fontColor, opacity: 0.5 }}>{(p.dadD ? "故 " : "") + p.dad} · {(p.momD ? "故 " : "") + p.mom}의 {p.relation}</p>}
+                            {!hideParents && <p className="text-[7px]" style={{ color: fontColor, opacity: 0.5 }}>{(p.dadD ? "故 " : "") + p.dad} · {(p.momD ? "故 " : "") + p.mom}</p>}
                             <p className="font-serif text-[12px] tracking-widest" style={{ color: fontColor }}>{p.name}</p>
                           </div>
                         ))}
@@ -1357,7 +1414,7 @@ export default function CreatePage() {
 
         <div className="flex flex-1 overflow-hidden">
 
-          <div className="hidden lg:flex flex-col justify-center p-6 overflow-hidden flex-shrink-0" style={{ width: 360, backgroundColor: "#EBEBEB" }}>
+          <div className="hidden lg:flex flex-col justify-center p-6 overflow-hidden flex-shrink-0" style={{ width: "clamp(420px, 34vw, 500px)", backgroundColor: "#EBEBEB" }}>
             {PhonePreview()}
           </div>
 
@@ -1379,7 +1436,7 @@ export default function CreatePage() {
           </div>
 
           <div className="flex-1 overflow-y-auto bg-white">
-            <div className="max-w-3xl mx-auto px-8 py-6">
+            <div className="max-w-2xl mx-auto px-8 py-6">
 
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-gray-900">{currentTab.label}</h2>
@@ -1439,7 +1496,7 @@ export default function CreatePage() {
                         <div className="flex gap-5">
                           <div className="relative rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer group" style={{ width: 280, height: 340 }}
                             onClick={() => coverInput1Ref.current?.click()}>
-                            <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={{ filter: imgFilter }} />
+                            <img src={coverImage} alt="cover" className="absolute inset-0 w-full h-full object-cover" style={coverImageStyle} />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                               <div className="opacity-0 group-hover:opacity-100 bg-white/90 rounded-xl px-3 py-2 flex items-center gap-2 text-xs font-medium text-gray-700 transition-opacity">
                                 <ImageIcon size={13} /> 사진 변경
@@ -1454,15 +1511,24 @@ export default function CreatePage() {
                               </div>
                             </div>
                             <div className="absolute bottom-3 left-3 flex gap-2 z-10" onClick={(e) => e.stopPropagation()}>
-                              {[
-                                { icon: RotateCcw, label: "rotate" },
-                                { icon: Crop, label: "crop" },
-                              ].map(({ icon: Icon, label }) => (
-                                <button key={label} className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors">
-                                  <Icon size={15} className="text-gray-700" />
-                                </button>
-                              ))}
-                              <button onClick={() => setCoverImage(DEMO_COVER_IMAGES[0])} className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors">
+                              <button
+                                type="button"
+                                title="초기화"
+                                onClick={resetCoverImageAdjustments}
+                                className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors"
+                              >
+                                <RotateCcw size={15} className="text-gray-700" />
+                              </button>
+                              <button
+                                type="button"
+                                title="자르기"
+                                onClick={() => setShowCoverCrop((v) => !v)}
+                                className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors"
+                                style={{ outline: showCoverCrop ? `2px solid ${EDITOR_PINK}` : "none" }}
+                              >
+                                <Crop size={15} className="text-gray-700" />
+                              </button>
+                              <button type="button" onClick={() => setCoverImage(DEMO_COVER_IMAGES[0])} className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors">
                                 <Trash2 size={15} style={{ color: EDITOR_PINK }} />
                               </button>
                             </div>
@@ -1474,7 +1540,8 @@ export default function CreatePage() {
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-semibold text-gray-700">사진1 이미지 조정</p>
                               <button
-                                onClick={() => { setBrightness(1); setContrast(1); setSaturation(1); setGrayscale(0); setTemperature(0); }}
+                                type="button"
+                                onClick={resetCoverImageAdjustments}
                                 className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
                               >
                                 <RotateCcw size={10} /> 초기화
@@ -1484,7 +1551,14 @@ export default function CreatePage() {
                             <AdjSlider label="대조(contrast)"    value={contrast}    onChange={setContrast}    min={0} max={2} step={0.01} />
                             <AdjSlider label="채도(Saturation)"  value={saturation}  onChange={setSaturation}  min={0} max={2} step={0.01} />
                             <AdjSlider label="명도(grayscale)"   value={grayscale}   onChange={setGrayscale}   min={0} max={1} step={0.01} />
-                            <AdjSlider label="온도(temperature)" value={temperature} onChange={setTemperature} min={-1} max={1} step={0.01} />
+                            {showCoverCrop && (
+                              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 flex flex-col gap-3">
+                                <p className="text-xs font-semibold text-gray-600">자르기 위치</p>
+                                <AdjSlider label="가로 위치" value={coverCropX} onChange={setCoverCropX} min={0} max={100} step={1} />
+                                <AdjSlider label="세로 위치" value={coverCropY} onChange={setCoverCropY} min={0} max={100} step={1} />
+                                <AdjSlider label="확대" value={coverZoom} onChange={setCoverZoom} min={1} max={2} step={0.01} />
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1805,11 +1879,11 @@ export default function CreatePage() {
                       <SectionBlock title="신랑 & 신부 정보">
                         <div className="grid grid-cols-2 gap-4">
                           {(groomFirst
-                            ? [{ label: "신랑 정보", name: groomName, setName: setGroomName, intro: groomIntro, setIntro: setGroomIntro, relation: groomRelation, setRelation: setGroomRelation, photo: groomPhoto, inputRef: groomPhotoRef, icon: "🤵" },
-                               { label: "신부 정보", name: brideName, setName: setBrideName, intro: brideIntro, setIntro: setBrideIntro, relation: brideRelation, setRelation: setBrideRelation, photo: bridePhoto, inputRef: bridePhotoRef, icon: "👰" }]
-                            : [{ label: "신부 정보", name: brideName, setName: setBrideName, intro: brideIntro, setIntro: setBrideIntro, relation: brideRelation, setRelation: setBrideRelation, photo: bridePhoto, inputRef: bridePhotoRef, icon: "👰" },
-                               { label: "신랑 정보", name: groomName, setName: setGroomName, intro: groomIntro, setIntro: setGroomIntro, relation: groomRelation, setRelation: setGroomRelation, photo: groomPhoto, inputRef: groomPhotoRef, icon: "🤵" }]
-                          ).map(({ label, name, setName, intro, setIntro, relation, setRelation, photo, inputRef, icon }) => (
+                            ? [{ label: "신랑 정보", name: groomName, setName: setGroomName, intro: groomIntro, setIntro: setGroomIntro, photo: groomPhoto, inputRef: groomPhotoRef, icon: "🤵" },
+                               { label: "신부 정보", name: brideName, setName: setBrideName, intro: brideIntro, setIntro: setBrideIntro, photo: bridePhoto, inputRef: bridePhotoRef, icon: "👰" }]
+                            : [{ label: "신부 정보", name: brideName, setName: setBrideName, intro: brideIntro, setIntro: setBrideIntro, photo: bridePhoto, inputRef: bridePhotoRef, icon: "👰" },
+                               { label: "신랑 정보", name: groomName, setName: setGroomName, intro: groomIntro, setIntro: setGroomIntro, photo: groomPhoto, inputRef: groomPhotoRef, icon: "🤵" }]
+                          ).map(({ label, name, setName, intro, setIntro, photo, inputRef, icon }) => (
                             <div key={label} className="flex flex-col gap-3">
                               <p className="text-xs font-medium text-gray-600">{label}</p>
                               <div onClick={() => inputRef.current?.click()} className="w-16 h-16 rounded-full border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden relative group mx-auto hover:border-gray-400 transition-colors">
@@ -1819,10 +1893,6 @@ export default function CreatePage() {
                               </div>
                               <div className="flex flex-col gap-1">
                                 <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="이름" />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-xs text-gray-500">부모님과의 관계</label>
-                                <input className={inputCls} value={relation} onChange={(e) => setRelation(e.target.value)} placeholder="아들 / 딸" />
                               </div>
                               <div className="flex flex-col gap-1">
                                 <div className="flex justify-between">
@@ -1981,13 +2051,7 @@ export default function CreatePage() {
                           <div className="flex gap-2">
                             <input className={`${inputCls} flex-1`} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="도로명 주소" readOnly />
                             <button
-                              onClick={() => {
-                                new (window as any).daum.Postcode({
-                                  oncomplete: (data: any) => {
-                                    setAddress(data.roadAddress || data.autoRoadAddress || data.jibunAddress);
-                                  },
-                                }).open();
-                              }}
+                              onClick={openPostcodeSearch}
                               className="px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-medium whitespace-nowrap hover:bg-gray-700 transition-colors"
                             >
                               우편번호 검색
@@ -2342,12 +2406,21 @@ export default function CreatePage() {
                           <div className="grid grid-cols-[1fr_92px] gap-2">
                             <div className="flex flex-col gap-1.5 min-w-0">
                               <label className="text-xs text-gray-500">추천 기준</label>
-                              <input
-                                className={inputCls}
-                                value={address || venueName}
-                                readOnly
-                                placeholder="오시는길에서 식장 주소를 먼저 입력해 주세요"
-                              />
+                              <div className="flex gap-2">
+                                <input
+                                  className={`${inputCls} flex-1 min-w-0`}
+                                  value={address || venueName}
+                                  readOnly
+                                  placeholder="오시는길에서 식장 주소를 먼저 입력해 주세요"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={openPostcodeSearch}
+                                  className="px-3 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-medium whitespace-nowrap hover:bg-gray-200 transition-colors"
+                                >
+                                  주소 검색
+                                </button>
+                              </div>
                             </div>
                             <div className="flex flex-col gap-1.5">
                               <label className="text-xs text-gray-500">추천 개수</label>
@@ -2375,7 +2448,7 @@ export default function CreatePage() {
                               {nearbyRecommendations.map((place) => {
                                 const isSelected = selectedNearbyIds.includes(place.id);
                                 const placeAddress = place.roadAddressName || place.addressName;
-                                const category = place.categoryName.split(">").map((part) => part.trim()).filter(Boolean).pop();
+                                const category = place.categoryName?.split(">").map((part) => part.trim()).filter(Boolean).pop();
                                 return (
                                   <button
                                     key={place.id}
@@ -2385,11 +2458,13 @@ export default function CreatePage() {
                                       ? { borderColor: EDITOR_PINK, backgroundColor: EDITOR_PINK_BG }
                                       : { borderColor: "#E5E7EB" }}
                                   >
-                                    <div className="flex items-start justify-between gap-3">
-                                      {place.imageUrl && (
-                                        <img src={place.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-gray-100" />
-                                      )}
-                                      <div className="min-w-0">
+                                    <div className="grid grid-cols-[64px_1fr_auto] items-start gap-3">
+                                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                        {place.imageUrl && (
+                                          <img src={place.imageUrl} alt="" className="w-full h-full object-cover" />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0 pt-0.5">
                                         <p className="text-sm font-semibold text-gray-800 truncate">{place.placeName}</p>
                                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{[place.recommendationType, category, placeAddress].filter(Boolean).join(" · ")}</p>
                                         {place.phone && <p className="text-[11px] text-gray-400 mt-1">{place.phone}</p>}
@@ -2501,12 +2576,6 @@ export default function CreatePage() {
                               </div>
                             </button>
                           ))}
-                        </div>
-                      </SectionBlock>
-                      <SectionBlock title="업로드 설정">
-                        <div className="flex items-center justify-between py-1">
-                          <div><p className="text-sm text-gray-700">카카오 로그인 필요</p><p className="text-xs text-gray-400 mt-0.5">카카오 인증 후 업로드 가능</p></div>
-                          <Toggle value={requireKakaoAuth} onChange={setRequireKakaoAuth} />
                         </div>
                       </SectionBlock>
                     </>

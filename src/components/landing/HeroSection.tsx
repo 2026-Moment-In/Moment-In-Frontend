@@ -43,7 +43,7 @@ export default function HeroSection() {
               to="/guest"
               className="px-8 py-4 bg-white border border-divider text-charcoal rounded-full text-sm font-medium hover:bg-surface transition-colors"
             >
-              샘플 보기
+              코드 입력
             </Link>
           </motion.div>
 

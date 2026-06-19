@@ -11,17 +11,22 @@ export default function QR() {
   const [qrImg, setQrImg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
   const [copied, setCopied] = useState(false);
+  const inviteUrl = code
+    ? `${import.meta.env.VITE_FRONT_URL || window.location.origin}/show/${code}`
+    : '';
 
   useEffect(() => {
-    QRCode.toDataURL(`${import.meta.env.VITE_FRONT_URL}/show/${code}`, {
+    if (!inviteUrl) return;
+
+    QRCode.toDataURL(inviteUrl, {
       width: 280,
       margin: 2,
       color: { dark: '#2c1a0e', light: '#ffffff' },
     }).then(setQrImg);
-  }, [code]);
+  }, [inviteUrl]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code ?? '');
+    navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
